@@ -15,8 +15,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import torch
-from madrax.sources.globalVariables import *
-from madrax.sources import hashings, math_utils
+from vitra.sources.globalVariables import *
+from vitra.sources import hashings, math_utils
 
 
 def generateFakeAtomTensor(coords, partnersCoords, atomDescription, fake_atom_properties):
