@@ -1,0 +1,4 @@
+nbsphinx
+sphinx
+--find-links https://download.pytorch.org/whl/cpu
+torch

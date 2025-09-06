@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import time
+
+import os
+import torch
+
+import madrax.dataStructures as dataStructures
+import madrax.utils as utils
+from madrax.ForceField import ForceField
+
+
+def test():
+    class SimpleNN(torch.nn.Module):  # very simple recurrent neural net
+
+        def __init__(self, hidden_size_rnn=50, num_layers_rnn=3, hidden_feed_forward=50, dev="cpu"):
+            super(SimpleNN, self).__init__()
+
+            self.recurrent = torch.nn.LSTM(11, hidden_size_rnn, num_layers_rnn, bidirectional=True, device=dev,
+                                           batch_first=True)
+
+            self.feedForwardStep = torch.nn.Sequential(
+                torch.nn.Linear(hidden_size_rnn * 2, hidden_feed_forward),
+                torch.nn.Tanh(),
+                torch.nn.Linear(hidden_feed_forward, hidden_feed_forward),
+                torch.nn.Tanh(),
+                torch.nn.Linear(hidden_feed_forward, 1),
+                torch.nn.Sigmoid()
+            ).to(device)
+
+        def forward(self, init_energies):
+            input_rnn = init_energies[:, 0, :, 0, :]  # let's assume, for simplicity, we only have single chain proteins
+            output_rnn, _ = self.recurrent(input_rnn)
+            out = self.feedForwardStep(output_rnn)
+            return out.squeeze(-1)
+
+    pdb_file = os.path.dirname(os.path.abspath(__file__)) + "/madrax/exampleStructures/"
+
+    device = "cuda"
+    device = "cpu"
+
+    coordinates, atom_names, pdb_names = utils.parsePDB(pdb_file)
+
+    info_tensors = dataStructures.create_info_tensors(atom_names, device=device)
+    seqs = utils.atomName2Seq(atom_names)
+    lens = [len(i) for i in seqs]
+    container = ForceField(device=device)
+
+    # Load the model with map_location=torch.device('cpu')
+    container.load_state_dict(torch.load("madrax/parameters/final_model.weights", map_location=torch.device(device)))
+
+    energies = container(coordinates.to(device), info_tensors).data
+
+    y = []
+    for i in lens:
+        y += [torch.randint(high=2, low=0, size=[i], device=device).float()]
+
+    padded_y = torch.nn.utils.rnn.pad_sequence(y, batch_first=True, padding_value=-1)
+
+    model = SimpleNN()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    loss_function = torch.nn.BCELoss()
+
+    old_time = time.time()
+    for epoch in range(1000):
+        prediction = model(energies)
+
+        padding_mask = padded_y >= 0
+        loss = loss_function(prediction[padding_mask], padded_y[padding_mask])
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        if epoch % 50 == 0:
+            print("epoch", epoch, "loss:", round(float(loss.sum().cpu().data), 4), "time:", time.time() - old_time)
+            old_time = time.time()
+
+
+if __name__ == '__main__':
+    test()
