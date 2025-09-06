@@ -23,8 +23,8 @@
 #
 
 import torch, math, time, numpy as np
-from madrax.sources.globalVariables import *
-from madrax.sources import hashings
+from vitra.sources.globalVariables import *
+from vitra.sources import hashings
 cov = {}
 IonStrength = 0.05
 temp = 25
