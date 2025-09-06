@@ -5,20 +5,20 @@ import os
 import time
 import torch
 
-import madrax.sources.hashings as hashings
-import madrax.sources.math_utils as math_utils
-from madrax.energies import AngleScorer
-from madrax.energies import BondLenConstrain
-from madrax.energies import Clash_net
-from madrax.energies import Disulfide_net
-from madrax.energies import Electro_net
-from madrax.energies import EntropySC
-from madrax.energies import HBond_net
-from madrax.energies import Solvatation
-from madrax.energies import SolventAccessibility
-from madrax.energies import Vdw
-from madrax.sources import fakeAtomsGeneration
-from madrax.sources.globalVariables import *
+import vitra.sources.hashings as hashings
+import vitra.sources.math_utils as math_utils
+from vitra.energies import AngleScorer
+from vitra.energies import BondLenConstrain
+from vitra.energies import Clash_net
+from vitra.energies import Disulfide_net
+from vitra.energies import Electro_net
+from vitra.energies import EntropySC
+from vitra.energies import HBond_net
+from vitra.energies import Solvatation
+from vitra.energies import SolventAccessibility
+from vitra.energies import Vdw
+from vitra.sources import fakeAtomsGeneration
+from vitra.sources.globalVariables import *
 
 
 def score_min(x, dim, score):  # gives you the tensor with the dim dimension as min
@@ -200,10 +200,10 @@ class ForceField(torch.nn.Module):
         function that calculates the actual energy of the protein(s) or complex(es)
 
         Parameters ---------- coordinates : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It
-        can be generated using the madrax.utils.parsePDB function info_tensors : tuple a set of precalculated
+        can be generated using the vitra.utils.parsePDB function info_tensors : tuple a set of precalculated
         information tensors required by the forcefield. It can be created out of the box with the function
-        madrax.dataStructures.create_info_tensors starting from the atom names (that can be obtained, along with the
-        coordinates, by the  madrax.utils.parsePDB function) verbose : bool if you wanna see a lot of text everywhere
+        vitra.dataStructures.create_info_tensors starting from the atom names (that can be obtained, along with the
+        coordinates, by the  vitra.utils.parsePDB function) verbose : bool if you wanna see a lot of text everywhere
         in your terminal
 
         Returns
@@ -212,7 +212,7 @@ class ForceField(torch.nn.Module):
         shape: shape (Batch, nChains, nResi, nMutants, 10)
         The Gibbs energy of the input proteins. The dimensions are organized as follow:
 
-        The batch dimension refers to the protein number (same order of the one defined by the madrax.utils.parsePDB
+        The batch dimension refers to the protein number (same order of the one defined by the vitra.utils.parsePDB
         finction), chain refers to the chain index (sorted alphabetically), residue number refers to the residue
         position, nMutants refers to the mutants you might have implemented in the calculation (this dimension is 1
         if no mutants have been added). The last dimension refers to the different types of energy:
