@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 import torch
 
-from madrax.sources import hashings, math_utils
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings, math_utils
+from vitra.sources.globalVariables import *
 
 
 class RotateStruct:
