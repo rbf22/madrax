@@ -1,8 +1,8 @@
 import time
 import torch
 
-from madrax.sources import hashings
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources.globalVariables import *
 
 
 def create_info_tensors(atName, int_dtype=torch.short, device="cpu", verbose=False):
@@ -12,8 +12,8 @@ def create_info_tensors(atName, int_dtype=torch.short, device="cpu", verbose=Fal
     Parameters ---------- atName : list shape: list of lists A list of the atom identifier. It encodes atom type,
     residue type, residue position and chain as an example GLN_39_N_B_0_0 refers to an atom N in a Glutamine,
     in position 39 of chain B. the last two zeros are used for the mutation engine and should be ignored This list
-    can be generated using the madrax.utils.parsePDB function int_dtype : torch.dtype experimental! it is supposed to
-    be used to run MadraX with different data types device : str device on which the object should be created.
+    can be generated using the vitra.utils.parsePDB function int_dtype : torch.dtype experimental! it is supposed to
+    be used to run vitra with different data types device : str device on which the object should be created.
     Example: "cpu" for CPU calculation, "cuda" for GPU calculation, "cuda:0" to use GPU 0. Refer to pytorch devices
     semantic for more information verbose : bool defines if information is written out
 
@@ -21,7 +21,7 @@ def create_info_tensors(atName, int_dtype=torch.short, device="cpu", verbose=Fal
     -------
 
     info_tensor : tuple
-        some precalculated values used to run MadraX
+        some precalculated values used to run vitra
     """
 
     terminals = {}
