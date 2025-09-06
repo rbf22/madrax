@@ -22,10 +22,10 @@
 #  
 #  
 import torch
-from madrax.sources import math_utils
+from vitra.sources import math_utils
 import numpy as np
-from madrax.sources import hashings
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources.globalVariables import *
 
 
 def get_interaction_angles(acceptCoords, donorCoords, acceptorPartners1, donorPartners1, acceptorPartners2,
