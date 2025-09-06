@@ -26,9 +26,9 @@ import os
 import torch
 from torch import nn
 
-from madrax.sources import hashings
-from madrax.sources.globalVariables import *
-from madrax.sources.kde import realNVP
+from vitra.sources import hashings
+from vitra.sources.globalVariables import *
+from vitra.sources.kde import realNVP
 
 letters = {
  'CYS': "'C'", 'ASP': "'D'", 'SER': "'S'", 'GLN': "'Q'", 'LYS': "'K'", 'ASN': "'N'", 
@@ -168,8 +168,8 @@ class AngleScorer(torch.nn.Module):
         return bbScore, rotamerViolation
 
     def fit(self, pdb_dir):
-        from madrax import utils, dataStructures
-        from madrax.sources import math_utils
+        from vitra import utils, dataStructures
+        from vitra.sources import math_utils
         device = 'cuda'
         train_diz = {'bb':{},  'omega':{},  'sc':{}}
         coo, atnames = utils.parsePDB(pdb_dir)
