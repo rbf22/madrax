@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "vitra"
+version = "0.1.0"
+description = "Vitra is a PyTorch-based force field designed to calculate the stability of a protein or complex in a differentiable way."
+authors = ["Jules <jules@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+torch = "*"
+numpy = "*"
+matplotlib = "*"
+scipy = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+ruff = "*"
+pylint = "*"
+mypy = "*"
+deptry = "*"
+pytest-cov = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

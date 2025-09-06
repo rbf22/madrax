@@ -35,7 +35,7 @@ def test():
             out = self.feedForwardStep(output_rnn)
             return out.squeeze(-1)
 
-    pdb_file = os.path.dirname(os.path.abspath(__file__)) + "/vitra/exampleStructures/"
+    pdb_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vitra", "exampleStructures")
 
     device = "cuda"
     device = "cpu"
