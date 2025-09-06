@@ -236,7 +236,7 @@ def writepdb(coords, atnames, pdb_names=None, output_folder="outpdb/"):
                 name = n
             else:
                 continue
-            f = open(output_folder + name + ".pdb", "w")
+            f = open(os.path.join(output_folder, name + ".pdb"), "w")
             skip = ["RC", "RE"]
             skip_mask = torch.zeros(coords.shape[0])
             for res in hashings.resi_hash.keys():
@@ -258,7 +258,7 @@ def writepdb(coords, atnames, pdb_names=None, output_folder="outpdb/"):
             coordsLoc = coords[coords_mask].tolist()
             for i in range(len(res_numLoc)):
 
-                num = " " * (5 - len(str(i))) + str(i)
+                num = " " * (5 - len(str(i + 1))) + str(i + 1)
                 at = hashings.atom_hash_inverse[atnameLoc[i]]
                 if at == "tN":
                     at = "N"
@@ -328,7 +328,7 @@ def atomName2Seq(atName):
             resname, resind, a, chains, mut, alt_conf = a.split("_")
             resind = int(resind)
             if not (ch == chains or ch is None):
-                raise "this is a testing function, only single chian pdbs are allowed"
+                    raise Exception("this is a testing function, only single chian pdbs are allowed")
             if a == "CA":
                 if resind > maxres:
                     maxres = resind
