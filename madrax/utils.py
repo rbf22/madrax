@@ -1,9 +1,9 @@
 import os
 import torch
 
-from madrax import dataStructures
-from madrax.sources import hashings
-from madrax.sources.globalVariables import *
+from vitra import dataStructures
+from vitra.sources import hashings
+from vitra.sources.globalVariables import *
 
 
 def parsePDB(PDBFile, keep_only_chains=None, bb_only=False):
@@ -156,10 +156,10 @@ def writepdb(coords, atnames, pdb_names=None, output_folder="outpdb/"):
     function to write a pdb file from the coordinates and atom names
 
     Parameters ---------- coords : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It can be
-    generated using the madrax.utils.parsePDB function atnames : list shape: list of lists A list of the atom
+    generated using the vitra.utils.parsePDB function atnames : list shape: list of lists A list of the atom
     identifier. It encodes atom type, residue type, residue position and chain as an example GLN_39_N_B_0_0 refers to
     an atom N in a Glutamine, in position 39 of chain B. the last two zeros are used for the mutation engine and
-    should be ignored This list can be generated using the madrax.utils.parsePDB function pdb_names : list names of
+    should be ignored This list can be generated using the vitra.utils.parsePDB function pdb_names : list names of
     the PDBs. you can get them from the output of utils.parsePDB. If None is given, the proteins are named with an
     integer that represent their position in the batch output_folder : str output folder in which PDBs are written
     Returns -------
@@ -303,7 +303,7 @@ def atomName2Seq(atName):
     atName : list shape: list of lists A list of the atom identifier. It encodes atom type, residue type,
     residue position and chain as an example GLN_39_N_B_0_0 refers to an atom N in a Glutamine, in position 39 of
     chain B. the last two zeros are used for the mutation engine and should be ignored This list can be generated
-    using the madrax.utils.parsePDB function
+    using the vitra.utils.parsePDB function
 
     Returns
     -------
