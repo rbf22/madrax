@@ -23,7 +23,7 @@
 #  
 import torch
 import numpy as np
-from madrax.sources.globalVariables import *
+from vitra.sources.globalVariables import *
 
 
 def dot2dVectors(v1, v2):
