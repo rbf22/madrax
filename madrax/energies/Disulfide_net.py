@@ -23,9 +23,9 @@
 #
 
 import torch, numpy as np
-from madrax.sources import hashings
-from madrax.sources.math_utils import angle2dVectors, dihedral2dVectors
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources.math_utils import angle2dVectors, dihedral2dVectors
+from vitra.sources.globalVariables import *
 
 class Disulfide_net(torch.nn.Module):
 
