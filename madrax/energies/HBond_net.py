@@ -24,10 +24,10 @@
 
 import torch, math, numpy as np
 from torch import nn
-from madrax.sources import hashings
-from madrax.sources import math_utils
-from madrax.sources import select_best_virtualAtoms
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources import math_utils
+from vitra.sources import select_best_virtualAtoms
+from vitra.sources.globalVariables import *
 IonStrength = 0.05
 temperature = 298
 dielec = 8.8
