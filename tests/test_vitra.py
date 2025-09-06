@@ -6,9 +6,9 @@ import time
 import os
 import torch
 
-import madrax.dataStructures as dataStructures
-import madrax.utils as utils
-from madrax.ForceField import ForceField
+import vitra.dataStructures as dataStructures
+import vitra.utils as utils
+from vitra.ForceField import ForceField
 
 
 def test():
@@ -35,7 +35,7 @@ def test():
             out = self.feedForwardStep(output_rnn)
             return out.squeeze(-1)
 
-    pdb_file = os.path.dirname(os.path.abspath(__file__)) + "/madrax/exampleStructures/"
+    pdb_file = os.path.dirname(os.path.abspath(__file__)) + "/vitra/exampleStructures/"
 
     device = "cuda"
     device = "cpu"
@@ -48,7 +48,7 @@ def test():
     container = ForceField(device=device)
 
     # Load the model with map_location=torch.device('cpu')
-    container.load_state_dict(torch.load("madrax/parameters/final_model.weights", map_location=torch.device(device)))
+    container.load_state_dict(torch.load("vitra/parameters/final_model.weights", map_location=torch.device(device)))
 
     energies = container(coordinates.to(device), info_tensors).data
 
