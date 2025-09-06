@@ -23,8 +23,8 @@
 #
 
 import torch, math
-from madrax.sources import hashings
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources.globalVariables import *
 letters = {
  'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ASN': 'N', 
  'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ALA': 'A', 'HIS': 'H', 'GLY': 'G', 
