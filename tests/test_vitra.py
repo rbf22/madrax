@@ -63,7 +63,7 @@ def test():
     loss_function = torch.nn.BCELoss()
 
     old_time = time.time()
-    for epoch in range(1000):
+    for epoch in range(3):
         prediction = model(energies)
 
         padding_mask = padded_y >= 0
@@ -71,9 +71,8 @@ def test():
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-        if epoch % 50 == 0:
-            print("epoch", epoch, "loss:", round(float(loss.sum().cpu().data), 4), "time:", time.time() - old_time)
-            old_time = time.time()
+        print("epoch", epoch, "loss:", round(float(loss.sum().cpu().data), 4), "time:", time.time() - old_time)
+        old_time = time.time()
 
 
 if __name__ == '__main__':
