@@ -1,10 +1,10 @@
-# Agent Instructions for `madrax`
+# Agent Instructions for `vitra`
 
-This document provides instructions for AI agents working on the `madrax` repository.
+This document provides instructions for AI agents working on the `vitra` repository.
 
 ## Project Overview
 
-`madrax` is a molecular energy and minimizer, capable of reading from and writing to `.pdb`, files.
+`vitra` is a molecular energy and minimizer, capable of reading from and writing to `.pdb`, files.
 
 ## Development Setup
 
