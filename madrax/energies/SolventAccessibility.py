@@ -25,9 +25,9 @@
 import torch
 import numpy as np
 
-from madrax.sources.globalVariables import *
-from madrax.sources.math_utils import angle2dVectors
-from madrax.sources import hashings
+from vitra.sources.globalVariables import *
+from vitra.sources.math_utils import angle2dVectors
+from vitra.sources import hashings
 
 inverse_letters = {
     'C': 'CYS', 'D': 'ASP', 'S': 'SER', 'Q': 'GLN', 'K': 'LYS', 'N': 'ASN',
