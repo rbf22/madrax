@@ -17,7 +17,7 @@ import os
 import pickle
 import torch
 
-from madrax.sources.globalVariables import *
+from vitra.sources.globalVariables import *
 
 
 def generate_atom_hashing():
