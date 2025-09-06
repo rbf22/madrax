@@ -25,9 +25,9 @@
 import torch
 import math
 from torch import nn
-from madrax.sources.globalVariables import *
-from madrax.sources import math_utils, hashings
-from madrax import dataStructures
+from vitra.sources.globalVariables import *
+from vitra.sources import math_utils, hashings
+from vitra import dataStructures
 import numpy as np
 dielec = 8.8
 constant = math.exp(-0.004314 * (TEMPERATURE - 273))
