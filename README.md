@@ -6,10 +6,6 @@
 
 **Vitra** is a PyTorch-based force field designed to calculate the stability of a protein or complex in a differentiable way.
 
-Like [MadraX](https://bitbucket.org/grogdrinker/madrax/)—on which it builds—Vitra can interact end-to-end with neural networks and record gradients via PyTorch’s autograd.
-
-Vitra implements the same physical energy terms as [FoldX](http://foldxsuite.crg.eu/), while introducing new differentiable extensions for deep learning workflows.
-
 If you use Vitra in your research, please consider citing the related MadraX and FoldX publications.
 
 ---
@@ -147,9 +143,7 @@ Vitra reproduces the **FoldX** functional forms of protein energy terms, impleme
 
 ## Summary
 
-- **FoldX** defined the original empirical force-field terms.  
-- **MadraX** reimplemented them in PyTorch for differentiability and GPU acceleration.  
-- **Vitra** extends MadraX, keeping FoldX compatibility while adding differentiable terms for ML integration.
+- **Vitra** extends MadraX.
 
 Sources: Definitions and formulas are taken from the MadraX documentation/paper and the original FoldX publications.
 
