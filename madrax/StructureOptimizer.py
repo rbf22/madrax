@@ -5,8 +5,8 @@ import math
 import time
 import torch
 
-from madrax.mutate import rotator
-from madrax.sources import hashings
+from vitra.mutate import rotator
+from vitra.sources import hashings
 
 letters = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ASN': 'N', 'PRO': 'P', 'THR': 'T', 'PHE': 'F',
            'ALA': 'A', 'HIS': 'H', 'GLY': 'G', 'ILE': 'I', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W', 'VAL': 'V', 'GLU': 'E',
@@ -17,12 +17,12 @@ def optimize(model, coords, info_tensors, epochs=50, verbose=False, learning_rat
     """
     function that minimizes the energy of protein(s) or complex(es)
 
-    Parameters ---------- model : madrax.ForceField A Madrax ForceField object. It can be generated using the
-    madrax.ForceField function coords : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It can be
-    generated using the madrax.utils.parsePDB function info_tensors : tuple a set of precalculated information
+    Parameters ---------- model : vitra.ForceField A vitra ForceField object. It can be generated using the
+    vitra.ForceField function coords : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It can be
+    generated using the vitra.utils.parsePDB function info_tensors : tuple a set of precalculated information
     tensors required by the forcefield. It can be created out of the box with the function
-    madrax.dataStructures.create_info_tensors starting from the atom names (that can be obtained, along with the
-    coordinates, by the  madrax.utils.parsePDB function) epochs : int number of optimization epochs default = 50
+    vitra.dataStructures.create_info_tensors starting from the atom names (that can be obtained, along with the
+    coordinates, by the  vitra.utils.parsePDB function) epochs : int number of optimization epochs default = 50
     learning_rate : float learning rate of the optimization default = 0.1 verbose : bool if you wanna see a lot of
     text everywhere in your terminal
 
@@ -32,7 +32,7 @@ def optimize(model, coords, info_tensors, epochs=50, verbose=False, learning_rat
     shape: shape (Batch, nChains, nResi, nMutants, 10)
     The Gibbs energy of the input proteins. The dimensions are organized as follow:
 
-    The batch dimension refers to the protein number (same order of the one defined by the madrax.utils.parsePDB
+    The batch dimension refers to the protein number (same order of the one defined by the vitra.utils.parsePDB
     finction), chain refers to the chain index (sorted alphabetically), residue number refers to the residue
     position, nMutants refers to the mutants you might have implemented in the calculation (this dimension is 1 if no
     mutants have been added). The last dimension refers to the different types of energy:
