@@ -24,8 +24,8 @@
 
 import torch
 
-from madrax.sources import hashings
-from madrax.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources.globalVariables import *
 
 class Vdw(torch.nn.Module):
 
