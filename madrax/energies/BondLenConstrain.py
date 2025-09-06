@@ -24,9 +24,9 @@
 
 import torch,math,os
 
-from madrax.sources import hashings,math_utils
+from vitra.sources import hashings,math_utils
 
-from madrax.sources.globalVariables import *
+from vitra.sources.globalVariables import *
 
 
 class BondLenConstrain(torch.nn.Module):
