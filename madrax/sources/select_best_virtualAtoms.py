@@ -1,7 +1,7 @@
 import torch
 
-from madrax.sources import geometry
-from madrax.sources.globalVariables import *
+from vitra.sources import geometry
+from vitra.sources.globalVariables import *
 
 
 def select_closest_hydrogen(x1_coords, hydrogen_p):
