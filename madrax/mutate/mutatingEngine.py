@@ -1,6 +1,6 @@
 import torch
-from madrax.sources import fakeAtomsGeneration
-from madrax.sources.globalVariables import *
+from vitra.sources import fakeAtomsGeneration
+from vitra.sources.globalVariables import *
 
 atomsOfEachresi = {
     'LYS': ['C', 'N', 'O', 'CA', 'CB', 'CG', 'CD', 'CE', 'NZ'],
@@ -151,10 +151,10 @@ def mutate(coords, atName, mutationList):
     function that implement mutation in input proteins
 
     Parameters ---------- coords : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It can be
-    generated using the madrax.utils.parsePDB function atName : list shape: list of lists A list of the atom
+    generated using the vitra.utils.parsePDB function atName : list shape: list of lists A list of the atom
     identifier. It encodes atom type, residue type, residue position and chain as an example GLN_39_N_B_0_0 refers to
     an atom N in a Glutamine, in position 39 of chain B. the last two zeros are used for the mutation engine This
-    list can be generated using the madrax.utils.parsePDB function mutationList: list shape: list of lists a list of
+    list can be generated using the vitra.utils.parsePDB function mutationList: list shape: list of lists a list of
     mutations. every entry corresponds to a protein (same order of atName and coordinates)\n every element of the
     list corresponds to a mutant. Every mutant can have 0, 1 or more mutations\n every mutation is encoded with
     resNumber_chain_MutattionToImplement\n the residue number and chain arethe same of the ones in the PDB file\n as
