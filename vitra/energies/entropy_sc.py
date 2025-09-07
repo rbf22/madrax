@@ -88,6 +88,9 @@ class SideChainEntropyEnergy(torch.nn.Module):
             hbond.sum(-1) + vdw.squeeze(-1) + electro.squeeze(-1) + clash.sum(-1)
         )
 
+        if residue_energy.shape != lookup_entropy_sc.shape:
+            residue_energy, _ = residue_energy.max(dim=-1, keepdim=True)
+
         mask1 = lookup_entropy_sc < residue_energy
         mask2 = ~mask1 & (final_entropy_sc < residue_energy)
         final_entropy_sc[mask1] = lookup_entropy_sc[mask1]
