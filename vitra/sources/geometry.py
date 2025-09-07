@@ -25,7 +25,7 @@ import torch
 from vitra.sources import math_utils
 import numpy as np
 from vitra.sources import hashings
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX
 
 
 def get_interaction_angles(acceptCoords, donorCoords, acceptorPartners1, donorPartners1, acceptorPartners2,
@@ -47,7 +47,7 @@ def get_interaction_angles(acceptCoords, donorCoords, acceptorPartners1, donorPa
     ang_planes, nanMaskPlane = math_utils.plane_angle(acceptCoords, acceptorPartners1, acceptorPartners2, donorCoords,
                                                       donorPartners1, donorPartners2)
 
-    assert np.isnan(torch.sum(protFreeAcc).cpu().data.numpy()) == False
+    assert not np.isnan(torch.sum(protFreeAcc).cpu().data.numpy())
 
     # non usi i plane angles, metti il nan separato
     fullNanMask = nanMaskFpd * nanMaskPfa * nanMaskDihed
@@ -71,7 +71,7 @@ def get_interaction_anglesStatisticalPotential(acceptCoords, donorCoords, accept
     dihed, nanMaskDihed, test = math_utils.dihedral2dVectors(donorPartners1, donorCoords, acceptCoords,
                                                              acceptorPartners1, testing=True)
 
-    assert np.isnan(torch.sum(protFreeAcc).cpu().data.numpy()) == False
+    assert not np.isnan(torch.sum(protFreeAcc).cpu().data.numpy())
 
     # non usi i plane angles, metti il nan separato
     fullNanMask = nanMaskFpd * nanMaskPfa * nanMaskDihed
@@ -80,7 +80,6 @@ def get_interaction_anglesStatisticalPotential(acceptCoords, donorCoords, accept
 
 
 def get_standard_angles(donorCoords, acceptCoords, hydrogens, freeOrb):
-    AccProton = acceptCoords - hydrogens
     DonProton = donorCoords - hydrogens
     freeProt = freeOrb - hydrogens
     AccFree = acceptCoords - freeOrb
@@ -102,7 +101,6 @@ def define_partners_coords(coords, atom_hashing_position, res_num, atom_names, r
     indexes2_tot = []
 
     for batch in range(batch_len):
-        p_tens1 = torch.zeros(coords[batch].shape).type(coords[0].type())
         indexes1 = []
         indexes2 = []
         orig = []

@@ -1,10 +1,9 @@
-import torch
-from vitra.energies.Disulfide_net import Disulfide_net
+from vitra.energies.disulfide_net import DisulfideEnergy
 
 def test_disulfide_instantiation():
     """
-    Tests that the Disulfide_net module can be instantiated without errors.
+    Tests that the DisulfideEnergy module can be instantiated without errors.
     """
     dev = 'cpu'
-    disulfide_module = Disulfide_net(dev=dev)
+    disulfide_module = DisulfideEnergy(dev=dev)
     assert disulfide_module is not None

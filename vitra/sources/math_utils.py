@@ -23,7 +23,7 @@
 #  
 import torch
 import numpy as np
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import EPS
 
 
 def dot2dVectors(v1, v2):
@@ -55,11 +55,11 @@ def angle2dVectors(v1, v2):
 
     v4 = v2 / v2Norm
 
-    assert np.isnan(torch.sum(v2).cpu().data.numpy()) == False
-    assert np.isnan(torch.sum(v1).cpu().data.numpy()) == False
+    assert not np.isnan(torch.sum(v2).cpu().data.numpy())
+    assert not np.isnan(torch.sum(v1).cpu().data.numpy())
 
     scal = dot2dVectors(v3, v4)
-    assert np.isnan(torch.sum(scal).cpu().data.numpy()) == False
+    assert not np.isnan(torch.sum(scal).cpu().data.numpy())
 
     mask1 = torch.abs(scal + 1.0).le(EPS)
     mask2 = torch.abs(scal - 1.0).le(EPS)
@@ -71,7 +71,7 @@ def angle2dVectors(v1, v2):
     return dih, ~nanmask1 & ~nanmask2, "scimmia"
 
 
-def dihedral2dVectors(i, j, k, l, testing=False):
+def dihedral2dVectors(i, j, k, ell, testing=False):
     """
     double dih;
     Vector3D jk=k-j;
@@ -97,7 +97,7 @@ def dihedral2dVectors(i, j, k, l, testing=False):
     cNorm = torch.masked_fill(cNorm, nanmask1, 1)
     c = c / cNorm
 
-    d = torch.cross(l - k, jk, dim=1)
+    d = torch.cross(ell - k, jk, dim=1)
     dNorm = torch.norm(d, dim=1).unsqueeze(1)
     nanmask2 = dNorm.le(EPS)
 

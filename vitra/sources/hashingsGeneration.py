@@ -17,7 +17,7 @@ import os
 import pickle
 import torch
 
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX
 
 
 def generate_atom_hashing():

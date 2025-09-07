@@ -1,6 +1,6 @@
 import os
 import torch
-import vitra.dataStructures as dataStructures
+import vitra.data_structures as data_structures
 import vitra.utils as utils
 from vitra.ForceField import ForceField
 
@@ -11,9 +11,9 @@ def generate_reference_data():
     pdb_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vitra", "exampleStructures", "alanine.pdb")
     device = "cpu"
 
-    coordinates, atom_names = utils.parsePDB(pdb_file)
+    coordinates, atom_names = utils.parse_pdb(pdb_file)
 
-    info_tensors = dataStructures.create_info_tensors(atom_names, device=device)
+    info_tensors = data_structures.create_info_tensors(atom_names, device=device)
 
     container = ForceField(device=device)
 

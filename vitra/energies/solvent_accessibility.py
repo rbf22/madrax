@@ -25,7 +25,7 @@
 import torch
 import numpy as np
 
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX, EPS
 from vitra.sources.math_utils import angle2dVectors
 from vitra.sources import hashings
 

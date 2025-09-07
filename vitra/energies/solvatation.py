@@ -26,7 +26,7 @@ import math
 import torch
 
 from vitra.sources import hashings
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX, TEMPERATURE, EPS
 
 
 class Solvatation(torch.nn.Module):
@@ -57,7 +57,6 @@ class Solvatation(torch.nn.Module):
         self.corr_ionic = math.sqrt(IONSTRENGTH) / 3.9
 
     def bindToAtoms(self, atom_description, facc, faccPol, solvPCorrectionMask, atomHbonds, atomDisul):
-        bondEnergyTreshold = -0.1
         nalter = facc.shape[1]
         atNames = atom_description[:, hashings.atom_description_hash['at_name']].long()
         enerG = hashings.atom_Properties[(atNames, hashings.property_hashings['solvenergy_props']['enerG'])]

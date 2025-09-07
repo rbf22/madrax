@@ -6,7 +6,7 @@ import time
 import os
 import torch
 
-import vitra.dataStructures as dataStructures
+import vitra.data_structures as data_structures
 import vitra.utils as utils
 from vitra.ForceField import ForceField
 
@@ -40,10 +40,10 @@ def test():
     device = "cuda"
     device = "cpu"
 
-    coordinates, atom_names, pdb_names = utils.parsePDB(pdb_file)
+    coordinates, atom_names, pdb_names = utils.parse_pdb(pdb_file)
 
-    info_tensors = dataStructures.create_info_tensors(atom_names, device=device)
-    seqs = utils.atomName2Seq(atom_names)
+    info_tensors = data_structures.create_info_tensors(atom_names, device=device)
+    seqs = utils.atom_name_to_seq(atom_names)
     lens = [len(i) for i in seqs]
     container = ForceField(device=device)
 

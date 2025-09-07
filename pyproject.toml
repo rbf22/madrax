@@ -9,8 +9,6 @@ readme = "README.md"
 python = "^3.9"
 torch = "*"
 numpy = "*"
-matplotlib = "*"
-scipy = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

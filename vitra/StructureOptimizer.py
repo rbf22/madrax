@@ -19,10 +19,10 @@ def optimize(model, coords, info_tensors, epochs=50, verbose=False, learning_rat
 
     Parameters ---------- model : vitra.ForceField A vitra ForceField object. It can be generated using the
     vitra.ForceField function coords : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It can be
-    generated using the vitra.utils.parsePDB function info_tensors : tuple a set of precalculated information
+    generated using the vitra.utils.parse_pdb function info_tensors : tuple a set of precalculated information
     tensors required by the forcefield. It can be created out of the box with the function
-    vitra.dataStructures.create_info_tensors starting from the atom names (that can be obtained, along with the
-    coordinates, by the  vitra.utils.parsePDB function) epochs : int number of optimization epochs default = 50
+    vitra.data_structures.create_info_tensors starting from the atom names (that can be obtained, along with the
+    coordinates, by the  vitra.utils.parse_pdb function) epochs : int number of optimization epochs default = 50
     learning_rate : float learning rate of the optimization default = 0.1 verbose : bool if you wanna see a lot of
     text everywhere in your terminal
 
@@ -32,7 +32,7 @@ def optimize(model, coords, info_tensors, epochs=50, verbose=False, learning_rat
     shape: shape (Batch, nChains, nResi, nMutants, 10)
     The Gibbs energy of the input proteins. The dimensions are organized as follow:
 
-    The batch dimension refers to the protein number (same order of the one defined by the vitra.utils.parsePDB
+    The batch dimension refers to the protein number (same order of the one defined by the vitra.utils.parse_pdb
     finction), chain refers to the chain index (sorted alphabetically), residue number refers to the residue
     position, nMutants refers to the mutants you might have implemented in the calculation (this dimension is 1 if no
     mutants have been added). The last dimension refers to the different types of energy:
@@ -55,7 +55,7 @@ def optimize(model, coords, info_tensors, epochs=50, verbose=False, learning_rat
     """
 
     dev = model.device
-    rotator_obj = rotator.RotateStruct()
+    rotator_obj = rotator.RotateStruct(dev=dev)
 
     atom_number, atom_description, coordsIndexingAtom, partnersIndexingAtom, \
         angle_indices, alternativeMask = info_tensors
@@ -77,7 +77,7 @@ def optimize(model, coords, info_tensors, epochs=50, verbose=False, learning_rat
     ], amsgrad=True, eps=0.1)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=10,
-                                                           verbose=False, threshold=0.0001, threshold_mode='rel',
+                                                           threshold=0.0001, threshold_mode='rel',
                                                            cooldown=0, min_lr=0, eps=1e-08)
 
     optimizer.zero_grad()

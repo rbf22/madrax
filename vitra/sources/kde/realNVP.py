@@ -10,13 +10,15 @@ class RealNVP(nn.Module):
     def __init__(self, nfea, device="cpu"):
         super(RealNVP, self).__init__()
 
-        nets = lambda: nn.Sequential(nn.Linear(nfea, 256), nn.LeakyReLU(),
-                                     nn.Linear(256, 256), nn.LeakyReLU(),
-                                     nn.Linear(256, nfea), nn.Tanh()).to(device)
+        def nets():
+            return nn.Sequential(nn.Linear(nfea, 256), nn.LeakyReLU(),
+                                       nn.Linear(256, 256), nn.LeakyReLU(),
+                                       nn.Linear(256, nfea), nn.Tanh()).to(device)
 
-        nett = lambda: nn.Sequential(nn.Linear(nfea, 256), nn.LeakyReLU(),
-                                     nn.Linear(256, 256), nn.LeakyReLU(),
-                                     nn.Linear(256, nfea)).to(device)
+        def nett():
+            return nn.Sequential(nn.Linear(nfea, 256), nn.LeakyReLU(),
+                                       nn.Linear(256, 256), nn.LeakyReLU(),
+                                       nn.Linear(256, nfea)).to(device)
         m = []
         tm = []
         for i in range(nfea):
@@ -93,7 +95,7 @@ def train_kde(dataset, epochs=2001):
     nfea = dataset.shape[1]
 
     flow = RealNVP(nfea=nfea, device=dev)
-    optimizer = torch.optim.Adam([p for p in flow.parameters() if p.requires_grad == True], lr=1e-4)
+    optimizer = torch.optim.Adam([p for p in flow.parameters() if p.requires_grad], lr=1e-4)
 
     for t in range(epochs):
         idx = np.random.randint(0, len(dataset), size=10000)

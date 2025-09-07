@@ -1,14 +1,14 @@
 import torch
 import numpy as np
-from vitra.energies.HBond_net import HBond_net
+from vitra.energies.hbond_net import HBondNet
 
 def test_hbond_angle_penalty():
     """
-    Tests the get_angle_penalty method in the HBond_net module.
+    Tests the get_angle_penalty method in the HBondNet module.
     This test verifies that the angular penalty is calculated correctly for a simple case.
     """
     dev = 'cpu'
-    hbond_module = HBond_net(dev=dev)
+    hbond_module = HBondNet(dev=dev)
 
     # All angles are in radians
     # Case 1: All angles are optimal, penalty should be 0

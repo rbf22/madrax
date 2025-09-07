@@ -1,6 +1,6 @@
 import os
 import torch
-import vitra.dataStructures as dataStructures
+import vitra.data_structures as data_structures
 import vitra.utils as utils
 from vitra.ForceField import ForceField
 
@@ -16,8 +16,8 @@ def test_forcefield_regression():
     pdb_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vitra", "exampleStructures", "alanine.pdb")
     device = "cpu"
 
-    coordinates, atom_names = utils.parsePDB(pdb_file)
-    info_tensors = dataStructures.create_info_tensors(atom_names, device=device)
+    coordinates, atom_names, _ = utils.parse_pdb(pdb_file)
+    info_tensors = data_structures.create_info_tensors(atom_names, device=device)
 
     container = ForceField(device=device)
     weights_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vitra", "parameters", "final_model.weights")
