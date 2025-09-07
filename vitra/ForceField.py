@@ -229,34 +229,36 @@ class ForceField(torch.nn.Module):
         coords, partners_final, fake_atoms, atom_pairs = self._prepare_tensors(coordinates, info_tensors)
         energies = self._calculate_energies(coords, partners_final, fake_atoms, atom_pairs, info_tensors)
 
-        hbonds = (energies["hbond_sc"] + energies["hbond_mc"]).sum(dim=-1)
+        hbonds = energies["hbond_sc"] + energies["hbond_mc"]
         electro = energies["electro_sc"] + energies["electro_mc"]
         vdw_energy = energies["vdw_mc"] + energies["vdw_sc"]
-        clash = energies["clash"].sum(dim=-1)
+        clash = energies["clash"]
+        clash_reduced, _ = clash.min(dim=-1, keepdim=True)
 
-        print("disulfide", energies["disulfide"].unsqueeze(-1).shape)
-        print("hbonds", hbonds.unsqueeze(-1).shape)
-        print("electro", electro.shape)
-        print("clash", clash.unsqueeze(-1).shape)
-        print("solv_p", energies["solv_p"].unsqueeze(-1).shape)
-        print("solv_h", energies["solv_h"].unsqueeze(-1).shape)
-        print("vdw_energy", vdw_energy.shape)
-        print("entropy_mc", energies["entropy_mc"].unsqueeze(-1).shape)
-        print("entropy_sc", energies["entropy_sc"].unsqueeze(-1).shape)
-        print("peptide_bond_constraints", energies["peptide_bond_constraints"].unsqueeze(-1).shape)
-        print("rotamer_violation", energies["rotamer_violation"].unsqueeze(-1).shape)
-        final_energy = torch.cat([
-            energies["disulfide"].unsqueeze(-1),
-            hbonds.unsqueeze(-1),
-            electro,
-            clash.unsqueeze(-1),
-            energies["solv_p"].unsqueeze(-1),
-            energies["solv_h"].unsqueeze(-1),
-            vdw_energy,
-            energies["entropy_mc"].unsqueeze(-1),
-            energies["entropy_sc"].unsqueeze(-1),
-            energies["peptide_bond_constraints"].unsqueeze(-1),
-            energies["rotamer_violation"].unsqueeze(-1)
-        ], dim=-1)
+        def _ensure_alt_dim(tensor):
+            # if tensor has 4 dims, add a trailing 1 so cat is consistent
+            if tensor.dim() == 4:
+                return tensor.unsqueeze(-1)
+            return tensor
+
+        terms = [
+            _ensure_alt_dim(energies["disulfide"]),
+            _ensure_alt_dim(hbonds),
+            _ensure_alt_dim(electro),
+            _ensure_alt_dim(clash_reduced),
+            _ensure_alt_dim(energies["solv_p"]),
+            _ensure_alt_dim(energies["solv_h"]),
+            _ensure_alt_dim(vdw_energy),
+            _ensure_alt_dim(energies["entropy_mc"]),
+            _ensure_alt_dim(energies["entropy_sc"]),
+            _ensure_alt_dim(energies["peptide_bond_constraints"]),
+            _ensure_alt_dim(energies["rotamer_violation"])
+        ]
+
+        # optional sanity assert
+        for t in terms:
+            assert t.shape[-1] == 1, f"expected trailing alt dim==1 but got {t.shape} for a term"
+
+        final_energy = torch.cat(terms, dim=-1)
 
         return final_energy

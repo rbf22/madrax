@@ -1132,8 +1132,9 @@ class HBondNet(torch.nn.Module):
         naltern = alternativeMask.shape[-1]
         finalMC = torch.zeros((batch, nchains, nres, naltern), dtype=(torch.float), device=(self.dev))
         if atomEnergy.sum() == 0:
-            return (
-             finalMC, torch.zeros((batch, nchains, nres, naltern, 3), dtype=(torch.float), device=(self.dev)))
+            finalMC_min, _ = finalMC.min(dim=-1, keepdim=True)
+            finalSC_components = torch.zeros((batch, nchains, nres, 1), dtype=(torch.float), device=(self.dev))
+            return (finalMC_min, finalSC_components)
         batch_ind = atom_description[:, hashings.atom_description_hash['batch']].unsqueeze(-1).expand(-1, naltern).long()
         chain_ind = atom_description[:, hashings.atom_description_hash['chain']].unsqueeze(-1).expand(-1, naltern).long()
         resIndex = atom_description[:, hashings.atom_description_hash['resnum']].unsqueeze(-1).expand(-1, naltern).long()
@@ -1164,8 +1165,18 @@ class HBondNet(torch.nn.Module):
         indices = tuple([batch_ind[bbmask & his_mask], chain_ind[bbmask & his_mask], resIndex[bbmask & his_mask], alt_index[bbmask & his_mask]])
         final_h2s = final_h2s.index_put(indices, (energy[bbmask & his_mask]), accumulate=True).unsqueeze(-1)
         finalSC = torch.cat([final_his, final_h1s, final_h2s], dim=(-1))
-        return (
-         finalMC, finalSC.sum(dim=-1))
+
+        # Collapse naltern with min (or choose mean/sum depending on semantics)
+        # Use keepdim=True so result shape is (..., 1)
+        finalMC_min, _ = finalMC.min(dim=-1, keepdim=True)   # shape: (batch, nchains, nres, 1)
+
+        # For sidechain hbonds: ensure we produce the same trailing dim
+        # Your original returned finalSC.sum(dim=-1) — we'll retain that but keep a trailing dim:
+        finalSC_sum_components = finalSC.sum(dim=-1)  # sum over components
+        finalSC_components, _ = finalSC_sum_components.min(dim=-1, keepdim=True)  # min over alternatives
+
+        # Return 5-D tensors consistent with electro_net (which uses unsqueeze(-1))
+        return finalMC_min, finalSC_components
 
     def getWeights(self):
         pass
