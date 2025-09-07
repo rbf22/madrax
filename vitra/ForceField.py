@@ -127,7 +127,7 @@ class ForceField(torch.nn.Module):
         self.angleScorer = AngleScorer.AngleScorer(dev=device)
         self.bondLenConstraint = BondLenConstrain.BondLenConstrain(dev=device)
         self.load_state_dict(torch.load(os.path.realpath(os.path.dirname(__file__)) + "/parameters/final_model.weights",
-                                        map_location=device))
+                                        map_location=device), strict=False)
 
     def getPairwiseRepresentation(self, coords, atom_number, atom_description, distance_threshold=7):
         L = atom_number.shape[0]

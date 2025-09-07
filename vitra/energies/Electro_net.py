@@ -36,7 +36,7 @@ random_coil = 0
 
 class Electro_net(torch.nn.Module):
     
-    def __init__(self = None, name = None, dev = None, backbone_atoms = None):
+    def __init__(self, name = "Electrostatics", dev = "cpu", backbone_atoms = []):
         self.name = name
         self.dev = dev
         self.backbone_atoms = backbone_atoms
@@ -65,8 +65,8 @@ class Electro_net(torch.nn.Module):
         if calculate_helical_dipoles:
             (NcpMask, CcpMask) = dataStructures.getHelicalDipoles(atomPairs, hbondNet, atom_description, alternativeMask)
         else:
-            NcpMask = torch.zeros(atomPairs.shape, torch.bool, self.dev, **('dtype', 'device'))
-            CcpMask = torch.zeros(atomPairs.shape, torch.bool, self.dev, **('dtype', 'device'))
+            NcpMask = torch.zeros(atomPairs.shape, torch.bool, device=self.dev)
+            CcpMask = torch.zeros(atomPairs.shape, torch.bool, device=self.dev)
         distance_dipole = 1
         Ionic_corrected = 0.02 + IonStrength / 1.4
         atName1 = atom_description[(atomPairs[:, 0], hashings.atom_description_hash['at_name'])].long()
@@ -183,14 +183,12 @@ class Electro_net(torch.nn.Module):
         virtual_energy[charged_charged_mask] += finalNONVirtual
         return (finalNONVirtual, atomPairs)
 
-    
     def forward(self, coords, partners, atom_description, atom_number, atomPairs, alternativeMask, hbondNet, facc):
         (networkEnergy, networkPairs) = self.net(coords, partners, atom_description, atomPairs, hbondNet, alternativeMask)
         atomEnergy = self.bindToAtoms(networkEnergy, networkPairs, alternativeMask)
         (residueEnergyMC, residueEnergySC) = self.bindToResi(atomEnergy, atom_description, facc, alternativeMask)
         return (residueEnergyMC, residueEnergySC, atomEnergy, networkEnergy)
 
-    
     def bindToResi(self, atomEnergy, atom_description, facc, alternativeMask, minSaCoefficient = (0.3,)):
         batch_ind = atom_description[:, hashings.atom_description_hash['batch']].long()
         resnum = atom_description[:, hashings.atom_description_hash['resnum']].long()
@@ -244,21 +242,20 @@ class Electro_net(torch.nn.Module):
             final_h2s], dim=-1)
         return (finalMC, finalSC)
 
-    
     def bindToAtoms(self, networkEnergy, networkPairs, alternMask):
         n_atoms = alternMask.shape[0]
         n_alter = alternMask.shape[-1]
         energy_atoms = torch.zeros((n_atoms, n_alter), dtype=torch.float, device=self.dev)
-        for alt in range(alternMask.shape[-1]):
-            mask = alternMask[(networkPairs[:, 0], alt)] & alternMask[(networkPairs[:, 1], alt)]
-            atom_number_pw1Alt = networkPairs[:, 0][mask]
-            atom_number_pw2Alt = networkPairs[:, 1][mask]
-            alt_index = torch.full(mask.shape, alt, device=self.dev, dtype=torch.long)[mask]
-            indices1 = (atom_number_pw1Alt, alt_index)
-            energy_atoms = energy_atoms.index_put(indices1, networkEnergy[mask] * 0.5, accumulate=True)
-            indices2 = (atom_number_pw2Alt, alt_index)
-            energy_atoms = energy_atoms.index_put(indices2, networkEnergy[mask] * 0.5, accumulate=True)
+        if len(networkEnergy) > 0:
+            for alt in range(alternMask.shape[-1]):
+                mask = alternMask[(networkPairs[:, 0], alt)] & alternMask[(networkPairs[:, 1], alt)]
+                atom_number_pw1Alt = networkPairs[:, 0][mask]
+                atom_number_pw2Alt = networkPairs[:, 1][mask]
+                alt_index = torch.full(mask.shape, alt, device=self.dev, dtype=torch.long)[mask]
+                indices1 = (atom_number_pw1Alt, alt_index)
+                energy_atoms = energy_atoms.index_put(indices1, networkEnergy[mask] * 0.5, accumulate=True)
+                indices2 = (atom_number_pw2Alt, alt_index)
+                energy_atoms = energy_atoms.index_put(indices2, networkEnergy[mask] * 0.5, accumulate=True)
         return energy_atoms
 
-    __classcell__ = None
 
