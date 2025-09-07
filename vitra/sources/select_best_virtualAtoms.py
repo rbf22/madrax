@@ -1,7 +1,8 @@
 import torch
+import numpy as np
 
 from vitra.sources import geometry
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX, NON_ACCEPTABLE_DISTANCE, MISSING_ATOM
 
 
 def select_closest_hydrogen(x1_coords, hydrogen_p):
@@ -40,7 +41,7 @@ def mask_angles(angles, nanmask, minAng, maxAng):
     return interaction_angles_fullmask
 
 
-def select_allVA(acceptor, donor, hydrogens_o, freeorbs_o):
+def select_allVA(acceptor, donor, hydrogens_o, freeorbs_o, minAng=None, maxAng=None):
     n_elements = freeorbs_o.shape[0]
     n_FO = freeorbs_o.shape[1]
     n_H = hydrogens_o.shape[1]
@@ -69,8 +70,12 @@ def select_allVA(acceptor, donor, hydrogens_o, freeorbs_o):
     acceptor = acceptor[maskMissing]
 
     angles, nanmask = geometry.get_standard_angles(donor, acceptor, hydrogens, freeorbs)
+    if minAng is None:
+        minAng = torch.zeros_like(angles[:, :3])
+    if maxAng is None:
+        maxAng = torch.ones_like(angles[:, :3]) * np.pi
 
-    ia_mask = mask_angles(angles, nanmask)
+    ia_mask = mask_angles(angles, nanmask, minAng, maxAng)
 
     distH = torch.full((n_elements * n_H * n_FO, 3), PADDING_INDEX).type(hydrogens.type())
     distFO = torch.full((n_elements * n_H * n_FO, 3), PADDING_INDEX).type(hydrogens.type())

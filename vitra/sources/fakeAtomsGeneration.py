@@ -15,7 +15,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import torch
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX, EPS
 from vitra.sources import hashings, math_utils
 
 

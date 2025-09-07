@@ -1,5 +1,4 @@
-import torch
-from vitra.energies.Solvatation import Solvatation
+from vitra.energies.solvatation import Solvatation
 
 def test_solvation_instantiation():
     """

@@ -21,22 +21,35 @@
 #  MA 02110-1301, USA.
 #
 #
-
-import torch, math, numpy as np
+"""This module contains the HBondNet class, which is responsible for calculating hydrogen bond energies."""
+import torch
+import math
+import numpy as np
 from torch import nn
 from vitra.sources import hashings
 from vitra.sources import math_utils
 from vitra.sources import select_best_virtualAtoms
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX, MISSING_ATOM, NON_ACCEPTABLE_ENERGY, TEMPERATURE
 IonStrength = 0.05
 temperature = 298
 dielec = 8.8
 constant = math.exp(-0.004314 * temperature)
 random_coil = 0
 
-class HBond_net(torch.nn.Module):
+class HBondNet(torch.nn.Module):
+    """
+    This class calculates the hydrogen bond energy of a protein.
+    """
 
-    def __init__(self, name='BackHbondEnergy', dev='cpu', backbone_atoms=[], donor=[], acceptor=[], hbond_ar=[]):
+    def __init__(self, name='BackHbondEnergy', dev='cpu', backbone_atoms=None, donor=None, acceptor=None, hbond_ar=None):
+        if hbond_ar is None:
+            hbond_ar = []
+        if acceptor is None:
+            acceptor = []
+        if donor is None:
+            donor = []
+        if backbone_atoms is None:
+            backbone_atoms = []
         self.name = name
         self.backbone_atoms = backbone_atoms
         self.dev = dev
@@ -86,7 +99,7 @@ class HBond_net(torch.nn.Module):
             self.alcholic_groups += [hashings.resi_hash[i]]
 
         self.alcholic_groups = list(set(self.alcholic_groups))
-        super(HBond_net, self).__init__()
+        super(HBondNet, self).__init__()
         self.relu = nn.ReLU()
         self.MAX_H_DIST = 4.5
         self.MAX_DON_ACC_DIST = 3.5
@@ -162,23 +175,20 @@ class HBond_net(torch.nn.Module):
                 aromatic_mask += pairwise_atom_name.eq(aromatic_atom)
 
         donor_acceptor_mask = donor_mask[:, 1] & acceptor_mask[:, 0]
-        donor_aromatic_mask = donor_mask[:, 1] & aromatic_mask[:, 0]
         mask_long = distmat.le(self.MAX_DON_ACC_DIST)
         is_disul = disul_atom.le(disul_threshold)
         same_residue_mask = torch.abs(residue_number[:, 0] - residue_number[:, 1]).ge(1) | ~pairwise_atom_description[:, self.chain1_ha].eq(pairwise_atom_description[:, self.chain2_ha]) | pairwise_atom_description[:, self.resname1_ha].eq(hashings.resi_hash['GLU']) | pairwise_atom_description[:, self.resname2_ha].eq(hashings.resi_hash['GLN'])
         peptide_and_bb_mask = ~(is_backbone_mask[:, 0] & is_backbone_mask[:, 1] & torch.abs(residue_number[:, 0] - residue_number[:, 1]).le(1))
         first_mask = mask_long & same_residue_mask & donor_acceptor_mask & peptide_and_bb_mask & ~is_disul
-        first_mask_aromatic = mask_long * same_residue_mask * donor_aromatic_mask & peptide_and_bb_mask
         masked_tot_coords = pairwise_coords_total[first_mask.squeeze(-1)]
         masked_hidrogen_pw = hidrogen_pw[first_mask.squeeze(-1)]
         masked_freeorb_pw = orbitals_pw[first_mask.squeeze(-1)]
         atom_number_pw = atom_number_pw[first_mask.squeeze(-1)]
         masked_atom_props = pairwise_atom_props[first_mask.squeeze(-1)]
         masked_atom_description = pairwise_atom_description[first_mask.squeeze(-1)]
-        maskedAromatic_tot_coords = pairwise_coords_total[first_mask_aromatic.squeeze(-1)]
         orbitals_pwRot = fakeatom_rot[:, n_H:, 0][first_mask]
         hidrogen_pwRot = fakeatom_rot[:, :n_H, 1][first_mask]
-        minAng, maxAng, optMin, optMax = self.build_angle_boundaries(masked_atom_description, is_backbone_mask[first_mask.squeeze(-1)])
+        minAng, maxAng, optMin, optMax = self.build_angle_boundaries(atom_number_pw, masked_atom_description, is_backbone_mask[first_mask.squeeze(-1)])
         hydrogens_pairwise_coords, freeOrbs_pairwise_coords, interaction_angles_pairwise, interaction_angles_fullmask, planeNanmask, test = select_best_virtualAtoms.do_pairwise_hbonds(masked_tot_coords[:, self.coords1_ha, :], masked_tot_coords[:, self.coords2_ha, :], masked_hidrogen_pw, masked_freeorb_pw, masked_tot_coords[:, self.part11_ha, :], masked_tot_coords[:, self.part12_ha, :], masked_tot_coords[:, self.part21_ha, :], masked_tot_coords[:, self.part22_ha, :], minAng, maxAng)
         orbitals_pwRot = orbitals_pwRot.unsqueeze(2).expand(orbitals_pwRot.shape[0], n_FO, n_H).reshape(orbitals_pwRot.shape[0], n_H * n_FO)
         hidrogen_pwRot = hidrogen_pwRot.unsqueeze(1).expand(hidrogen_pwRot.shape[0], n_FO, n_H).reshape(hidrogen_pwRot.shape[0], n_H * n_FO)
@@ -207,11 +217,11 @@ class HBond_net(torch.nn.Module):
         hpw_flat = hydrogens_pairwise_coords.permute(2, 0, 1).reshape(3, -1).permute(1, 0)
         distance_plane2H = math_utils.point_to_plane_dist(acc_flat, acc_pa1, acc_pa2, hpw_flat).view(-1, n_H * n_FO)
         dists_hyd = torch.norm((acceptor_multiH - hydrogens_pairwise_coords), dim=(-1))
-        hybridation_mask = ~masked_atom_description[:, self.hybrid1_ha].eq(parser.hashing_hybrid['SP2_O_ORB2']) & ~masked_atom_description[:, self.hybrid1_ha].eq(parser.hashing_hybrid['SP2_O_ORB2'])
+        hybridation_mask = ~masked_atom_description[:, self.hybrid1_ha].eq(hashings.hashing_hybrid['SP2_O_ORB2']) & ~masked_atom_description[:, self.hybrid1_ha].eq(hashings.hashing_hybrid['SP2_O_ORB2'])
         plane_distance_mask = (distance_plane2H / dists_hyd - masked_atom_props[:, self.hbond_plane_dist1_ha].unsqueeze(1).expand(distance_plane2H.shape)).le(0)
         plane_Hybrid_Hmask = hybridation_mask.unsqueeze(-1).expand(plane_distance_mask.shape) | plane_distance_mask
         bad_angles_mask = bad_angles_mask & plane_Hybrid_Hmask
-        third_mask = hybridation_mask | plane_distance_mask.sum(dim=(-1)).type(first_mask.type()) & bad_angles_mask.sum(dim=(-1)).type(first_mask.type())
+        third_mask = hybridization_mask | plane_distance_mask.sum(dim=(-1)).type(first_mask.type()) & bad_angles_mask.sum(dim=(-1)).type(first_mask.type())
         donor_multiH = donor_multiH[third_mask]
         acceptor_multiH = acceptor_multiH[third_mask]
         accP1_multiH = accP1_multiH[third_mask]
@@ -230,12 +240,12 @@ class HBond_net(torch.nn.Module):
         optMin = optMin[third_mask]
         optMax = optMax[third_mask]
         full_mask = first_mask.clone()
-        full_mask[full_mask == True] *= second_mask
-        full_mask[full_mask == True] *= third_mask
+        full_mask_clone = full_mask.clone()
+        full_mask[full_mask_clone] = second_mask
+        full_mask_clone = full_mask.clone()
+        full_mask[full_mask_clone] = third_mask
         full_mask = full_mask.squeeze(-1)
-        residue_number_masked = residue_number[full_mask]
         batch_pw = batch_pw[full_mask]
-        max_residue_numb = torch.max(residue_number)
         minAng = minAng.unsqueeze(1).repeat(1, n_FO * n_H, 1)
         maxAng = maxAng.unsqueeze(1).repeat(1, n_FO * n_H, 1)
         optMin = optMin.unsqueeze(1).repeat(1, n_FO * n_H, 1)
@@ -356,8 +366,9 @@ class HBond_net(torch.nn.Module):
         is_backbone_mask = is_backbone_mask[final_general_mask]
         disulfide = disulfide[long_mask][final_general_mask]
         atName = atName[final_general_mask].long()
-        full_mask = long_mask
-        full_mask[full_mask == True] *= final_general_mask
+        full_mask = long_mask.clone()
+        full_mask_clone = full_mask.clone()
+        full_mask[full_mask_clone] = final_general_mask
         del peptide_and_bb_mask
         del selfHbondMask
         del long_mask
@@ -382,7 +393,6 @@ class HBond_net(torch.nn.Module):
         donor_acceptor_mask = donor_mask[:, 1] & acceptor_mask[:, 0]
         donor_aromatic_mask = donor_mask[:, 1] & aromatic_mask[:, 0]
         first_mask = donor_acceptor_mask & ~disulfide
-        first_mask_aromatic = donor_aromatic_mask
         del same_residue_mask
         del disulfide
         del donor_aromatic_mask
@@ -431,9 +441,12 @@ class HBond_net(torch.nn.Module):
         maxAng = maxAng[third_mask]
         optMin = optMin[third_mask]
         optMax = optMax[third_mask]
-        full_mask[full_mask == True] *= first_mask
-        full_mask[full_mask == True] *= second_mask
-        full_mask[full_mask == True] *= third_mask
+        full_mask_clone = full_mask.clone()
+        full_mask[full_mask_clone] = first_mask
+        full_mask_clone = full_mask.clone()
+        full_mask[full_mask_clone] = second_mask
+        full_mask_clone = full_mask.clone()
+        full_mask[full_mask_clone] = third_mask
         full_mask = full_mask.squeeze(-1)
         minAng = minAng.unsqueeze(1).repeat(1, n_FO * n_H, 1)
         maxAng = maxAng.unsqueeze(1).repeat(1, n_FO * n_H, 1)
@@ -470,7 +483,6 @@ class HBond_net(torch.nn.Module):
         final_corr_Neutral = 1 - out_energies[neutral_mask]
         final_hbond_score = []
         final_indices = []
-        isrotatingMaskFinal = []
         atomPairsNoArom = atomPairs[first_mask][second_mask][third_mask]
         if final_corr_sulfur.shape[0] > 0:
             sulfurFakeatomsMask = acceptable_energies[sulfur_mask]
@@ -553,8 +565,6 @@ class HBond_net(torch.nn.Module):
             final_indices = []
             return (
              final_hbond_score, final_indices, full_mask)
-            return (
-             -torch.relu(-final_hbond_score), final_indices, full_mask)
 
     def build_angle_boundariesNew(self, masked_atom_description, is_backbone_mask):
         dev = is_backbone_mask.device
@@ -571,7 +581,7 @@ class HBond_net(torch.nn.Module):
         optMinProtFreeAcc = torch.full([n_elements], (np.radians(90.0)), device=dev, dtype=float_type)
         optMaxProtFreeAcc = torch.full([n_elements], (np.radians(110.0)), device=dev, dtype=float_type)
         if len(self.has_proton_states) == 0:
-            has_protons = torch.zeros(masked_atom_description[:, self.atname2_ha].shape).type_as(is_backbone_mask)
+            pass
         first = True
         for atomName in self.virtual_proton_holders:
             if first:
@@ -699,7 +709,7 @@ class HBond_net(torch.nn.Module):
         optMinProtFreeAcc = torch.full([n_elements], (np.radians(90.0)), device=dev, dtype=float_type)
         optMaxProtFreeAcc = torch.full([n_elements], (np.radians(110.0)), device=dev, dtype=float_type)
         if len(self.has_proton_states) == 0:
-            has_protons = torch.zeros(atName1.shape).type_as(is_backbone_mask)
+            pass
         first = True
         for atomName in self.virtual_proton_holders:
             if first:
@@ -863,11 +873,6 @@ class HBond_net(torch.nn.Module):
             usedHrot.index_put_(indices,
               (final_indicesAlt[:, 6][noneIsRotating].unsqueeze(-1).repeat(1, nrots)[:, 1:]),
               accumulate=False)
-            an = final_indicesAlt[:, 1]
-            ro = final_indicesAlt[:, 7]
-            an2 = final_indicesAlt[:, 2]
-            ro2 = final_indicesAlt[:, 8]
-            mRotating = (ro.eq(0) & an.lt(100) | ro2.eq(1) & an2.gt(100)) & (ro2.eq(0) & an2.lt(100) | ro2.eq(1) & an2.gt(100))
             usedFO = usedFO.index_put_((final_indicesAlt[:, 0], final_indicesAlt[:, 1], real_rot_index1, final_indicesAlt[:, 3]), torch.ones((final_indicesAlt[:, 0].shape), dtype=(torch.long), device=(self.dev)),
               accumulate=True)
             indices = (
@@ -947,7 +952,6 @@ class HBond_net(torch.nn.Module):
               dim=1)
             goodRotA2 = rotation[(totalStuff[:, 0], totalStuff[:, 1], totalStuff[:, 2], totalStuff[:, 3])].unsqueeze(1).expand(-1, n_H + n_FO)
             zeroEnergyA2 = energy_atoms[(totalStuff[:, 0], totalStuff[:, 1], totalStuff[:, 2], totalStuff[:, 3])].unsqueeze(1).expand(-1, n_H + n_FO).eq(0) & existing_H[:, :, 1]
-            isGoodRotMask = ((pairwise_fake_atomsRot[:, :, 0] == goodRotA1) | zeroEnergyA1) & ((pairwise_fake_atomsRot[:, :, 1] == goodRotA2) | zeroEnergyA2)
             isGoodRotMask1 = (pairwise_fake_atomsRot[:, :, 0] == goodRotA1) | zeroEnergyA1
             isGoodRotMask2 = (pairwise_fake_atomsRot[:, :, 1] == goodRotA2) | zeroEnergyA2
             availableH[:, alt, :, 0][isGoodRotMask1] = True
@@ -1055,8 +1059,6 @@ class HBond_net(torch.nn.Module):
              final_indicesAlt[:, 3]),
               (final_indicesAlt[:, 5]),
               accumulate=False)
-            an = final_indicesAlt[:, 0]
-            an2 = final_indicesAlt[:, 1]
             usedFO = usedFO.index_put_((
              final_indicesAlt[:, 0],
              final_indicesAlt[:, 2]),
@@ -1079,7 +1081,6 @@ class HBond_net(torch.nn.Module):
         _, rotation = hbondEnergy.min(-1)
         hbondEnergy = torch.zeros((n_atoms, n_alter), dtype=(self.float_type), device=(self.dev))
         multiple_bonds = torch.zeros((n_atoms, n_alter), dtype=(torch.long), device=(self.dev))
-        shared_bonds = []
         for alt in range(alternMask.shape[-1]):
             mask = alternMask[(final_indices[:, 0], alt)] & alternMask[(final_indices[:, 1], alt)]
             alt_index = torch.full((mask.shape), alt, device=(self.dev), dtype=(torch.long))[mask]
@@ -1127,7 +1128,6 @@ class HBond_net(torch.nn.Module):
         bb_mask = is_backbone_mask & mask_padding
         batch = batch_ind.max() + 1
         nres = torch.max(resnum) + 1
-        L = atomEnergy.shape[1]
         nchains = chain_ind.max() + 1
         naltern = alternativeMask.shape[-1]
         finalMC = torch.zeros((batch, nchains, nres, naltern), dtype=(torch.float), device=(self.dev))
@@ -1165,7 +1165,7 @@ class HBond_net(torch.nn.Module):
         final_h2s = final_h2s.index_put(indices, (energy[bbmask & his_mask]), accumulate=True).unsqueeze(-1)
         finalSC = torch.cat([final_his, final_h1s, final_h2s], dim=(-1))
         return (
-         finalMC, finalSC)
+         finalMC, finalSC.sum(dim=-1))
 
     def getWeights(self):
         pass

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 from vitra.sources import hashingsGeneration
+from typing import Dict, List, Tuple
 
 resi_hash = {'CYS': 0, 'ASP': 1, 'SER': 2, 'GLN': 3, 'LYS': 4, 'ASN': 5, 'PRO': 6, 'THR': 7, 'PHE': 8, 'ALA': 9,
              'HIS': 10, 'GLY': 11, 'ILE': 12, 'LEU': 13, 'ARG': 14, 'TRP': 15, 'VAL': 16, 'GLU': 17, 'TYR': 18,
@@ -21,8 +22,8 @@ hashing_hybrid = {"NO_HYBRID": 0, "SP2_N_H1": 1, "SP2_N_H2": 2, "SP2_N_ORB1": 3,
                   "SP3_O_H1ORB2": 6, "SP2_O_ORB2": 7}
 
 resi_hash_inverse = {}
-for i in resi_hash.keys():
-    resi_hash_inverse[resi_hash[i]] = i
+for res_name in resi_hash.keys():
+    resi_hash_inverse[resi_hash[res_name]] = res_name
 
 atom_description_hash = {
     "batch": 0,
@@ -157,7 +158,7 @@ res_acid_pointMC = {
     "TRP": [1500, 865]
 }
 
-chi_angle_builder_hashing = {}
+chi_angle_builder_hashing: Dict[str, Dict[str, List[Tuple[str, int]]]] = {}
 for chi in chi_atoms.keys():
     for res in chi_atoms[chi].keys():
         if res not in chi_angle_builder_hashing:

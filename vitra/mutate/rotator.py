@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 import torch
 
-from vitra.sources import hashings, math_utils
-from vitra.sources.globalVariables import *
+from vitra.sources import hashings
+from vitra.sources.globalVariables import PADDING_INDEX
 
 
 class RotateStruct:
-    def __init__(self):
+    def __init__(self, dev='cpu'):
         self.hashing = hashings.atom_hash
+        self.dev = dev
 
         self.torsion_hash = {
             "chi1": 0,
@@ -220,8 +221,8 @@ class RotateStruct:
     def preOptimizationStep(self):
         # building structure-specific data structures that are not gonna change during optimization
         print('does this ever happen?')
-        self.torsion_axesAffectedAngles[self.torsion_hash[i]][hashings.resi_hash[res]] = atnme.eq(
-            self.hashing[res][atname])
+        # self.torsion_axesAffectedAngles[self.torsion_hash[i]][hashings.resi_hash[res]] = atnme.eq(
+        #     self.hashing[res][atname])
 
     def moveCloudBackBone(self, coords, fake_atoms, atom_description, rotation, translation, partial_optimization,
                           alternatives):
@@ -321,7 +322,8 @@ class RotateStruct:
     def rotateBackBone(self, coords, atom_description, rotation, actually_moving):
 
         if atom_description[:, hashings.atom_description_hash["alternative"]].max() > 0:
-            raise "rotation backbone is only valid for a protein with no mutations. Run mutate with keep_WT==False"
+            raise ValueError(
+                "rotation backbone is only valid for a protein with no mutations. Run mutate with keep_WT==False")
 
         batch_ind = atom_description[:, hashings.atom_description_hash["batch"]].long()
         resnum = atom_description[:, hashings.atom_description_hash["resnum"]].long()
@@ -389,6 +391,7 @@ class RotateStruct:
             axis2 = ((resnum == targetResnum) & CA) & targeting_mask
             axis1 = ((resnum == targetResnum) & N) & targeting_mask
 
+            N_curr = None
             if True in axis2 and True in axis1:
                 N_curr = rotated_coords[axis2]
                 C_prev = rotated_coords[axis1]
@@ -414,6 +417,7 @@ class RotateStruct:
             axis2 = ((resnum == targetResnum) & C) & targeting_mask
             axis1 = ((resnum == targetResnum) & CA) & targeting_mask
 
+            N_curr = None
             if True in axis2 and True in axis1:
                 N_curr = rotated_coords[axis2]
                 C_prev = rotated_coords[axis1]
@@ -440,7 +444,8 @@ class RotateStruct:
     def buildBackBone(self, coords, atom_description, rotation, actually_moving):
 
         if atom_description[:, hashings.atom_description_hash["alternative"]].max() > 0:
-            raise "rotation backbone is only valid for a protein with no mutations. Run mutate with keep_WT==False"
+            raise ValueError(
+                "rotation backbone is only valid for a protein with no mutations. Run mutate with keep_WT==False")
 
         batch_ind = atom_description[:, hashings.atom_description_hash["batch"]].long()
         resnum = atom_description[:, hashings.atom_description_hash["resnum"]].long()
@@ -486,6 +491,7 @@ class RotateStruct:
             if True in axis2 and True in axis1:
                 # phi
                 C_prev = rotated_coords[((resnum == (targetResnum - 1)) & C) & targeting_mask]
+                N_curr = rotated_coords[axis2]
 
                 atomAxis = torch.cat([C_prev, N_curr], dim=0)
                 affected = resnum[targeting_mask].ge(targetResnum)
@@ -652,7 +658,7 @@ class RotateStruct:
                         masked_translation).unsqueeze(-1)).squeeze(-1))
 
                 rotate_coord_mask = padding_mask.clone()
-                rotate_coord_mask[rotate_coord_mask == True] = todoMask
+                rotate_coord_mask[rotate_coord_mask] = todoMask
 
                 rotated_coords = rotated_coords.masked_scatter(rotate_coord_mask.unsqueeze(-1).repeat(1, 3), fat)
 

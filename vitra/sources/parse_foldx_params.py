@@ -22,7 +22,6 @@
 #  
 #  
 import os
-import string
 
 letters = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ASN': 'N', 'PRO': 'P', 'THR': 'T', 'PHE': 'F',
            'ALA': 'A', 'HIS': 'H', 'GLY': 'G', 'ILE': 'I', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W', 'VAL': 'V', 'GLU': 'E',
@@ -49,7 +48,7 @@ def read_h_positions(fil=path + "/../parameters/hbond_coords_params.txt"):
         if aa not in diz:
             diz[aa] = {}
 
-        if not data[1] in diz[aa]:
+        if data[1] not in diz[aa]:
             diz[aa][data[1]] = {}
 
         if data[6] + "_0" in diz[aa][data[1]]:
@@ -102,6 +101,8 @@ def read_hbond_params(fil=path + "/../parameters/hbond_params.txt"):
 
             assert len(data) == len(header)
             diz = {}
+            aa_ind = -1
+            at_ind = -1
             for k in range(len(data)):
                 if header[k] == "aa":
                     aa_ind = k
@@ -113,13 +114,18 @@ def read_hbond_params(fil=path + "/../parameters/hbond_params.txt"):
                 elif header[k] != "hybridation":
                     try:
                         diz[header[k]] = float(data[k])
-                    except:
+                    except ValueError:
                         diz[header[k]] = data[k]
 
                 else:
                     diz[header[k]] = hashing_hybrid[data[k]]
 
-            if not data[0] in fin:
+            if aa_ind == -1:
+                raise ValueError("Header does not contain 'aa' column")
+            if at_ind == -1:
+                raise ValueError("Header does not contain 'atom' column")
+
+            if data[aa_ind] not in fin:
                 fin[data[aa_ind]] = {}
 
             fin[data[aa_ind]][data[at_ind]] = diz
@@ -179,7 +185,7 @@ def read_FO_positions(fil=path + "/../parameters/hbond_coords_params.txt"):
         if aa not in diz:
             diz[aa] = {}
 
-        if not data[1] in diz[aa]:
+        if data[1] not in diz[aa]:
             diz[aa][data[1]] = {}
         data[6] = data[6].replace("FO", "X")  # names are too long for pdb
 

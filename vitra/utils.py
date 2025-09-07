@@ -1,347 +1,239 @@
+"""
+This module provides utility functions for handling PDB files and other data manipulations.
+"""
 import os
+from dataclasses import dataclass
 import torch
 
-from vitra import dataStructures
+from vitra import data_structures
 from vitra.sources import hashings
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX
 
 
-def parsePDB(PDBFile, keep_only_chains=None, bb_only=False):
-    """
+@dataclass
+class MutantNameData:
+    """Data class for mutant name generation."""
+    pdb_name: str
+    alt: int
+    wt_mask: torch.Tensor
+    batch_mask: torch.Tensor
+    ca_mask: torch.Tensor
+    res_num: torch.Tensor
+    chain_ind: torch.Tensor
+    resname: torch.Tensor
+    altern_mask: torch.Tensor
+    chain_hashing: dict
 
-    function to parse pdb files. It can be used to parse a single file or all the pdb files in a folder. In case a
-    folder is given, the coordinates are gonna be padded
 
-    Parameters
-    ----------
-    PDBFile : str
-        path of the PDB file or of the folder containing multiple PDB files
-    bb_only : bool
-        if True ignores all the atoms but backbone N, C and CA
-    keep_only_chains : str or None
-        ignores all the chain but the one given. If None it keeps all chains
-    keep_hetatm : bool
-        if False it ignores heteroatoms
-    Returns
-    -------
-    coords : torch.Tensor
-        coordinates of the atoms in the pdb file(s). Shape ( batch, numberOfAtoms, 3)
-
-    atomNames : list A list of the atom identifier. It encodes atom type, residue type, residue position and chain as
-    an example GLN_39_N_B_0_0 refers to an atom N in a Glutamine, in position 39 of chain B. the last two zeros are
-    used for the mutation engine and should be ignored
-
-    pdbNames : list
-        an ordered list of the structure names
-
-    """
-
-    bbatoms = ["N", "CA", "C"]
+def _parse_single_pdb(pdb_file_path, keep_only_chains=None, bb_only=False):
+    """Parses a single PDB file."""
+    bb_atoms = ["N", "CA", "C"]
     ring_residues = ["PHE", "TYR"]
-    R_C_atoms = ["CD1", "CE2"]
-    pdbNames = []
+    r_c_atoms = ["CD1", "CE2"]
 
-    if not os.path.isdir(PDBFile):
-        fil = PDBFile
-        atomNamesTMP = []
-        coordsTMP = []
-        RC_atoms_dict = {}
-        cont = -1
-        oldres = -999
+    atom_names_tmp = []
+    coords_tmp = []
+    rc_atoms_dict = {}
 
-        for line in open(fil).readlines():
-            if line[:6] == "ENDMDL":
+    with open(pdb_file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("ENDMDL"):
                 break
-            elif line[:4] == "ATOM":
-                if keep_only_chains is not None and (not line[21] in keep_only_chains):
-                    continue
-                if bb_only and not line[12:16].strip() in bbatoms:
-                    continue
-                if oldres != int(line[22:26]):
-                    cont += 1
-                    oldres = int(line[22:26])
-                if line[12:16].strip()[0] == "H":  # hydrogens are removed
-                    continue
-                resnum = int(line[22:26])
-                altern_conformation = "0"
-                mutant = "0"
+            if not line.startswith("ATOM"):
+                continue
 
-                atomNamesTMP += [line[17:20].strip() + "_" + str(resnum) + "_" + line[12:16].strip() + "_" + line[
-                    21] + "_" + mutant + "_" + altern_conformation]
+            if keep_only_chains is not None and (line[21] not in keep_only_chains):
+                continue
+            if bb_only and line[12:16].strip() not in bb_atoms:
+                continue
+            if line[12:16].strip().startswith("H"):
+                continue
 
-                x = float(line[30:38])
-                y = float(line[38:46])
-                z = float(line[46:54])
+            resnum = int(line[22:26])
+            resname = line[17:20].strip()
+            atom_name = line[12:16].strip()
+            chain_id = line[21]
 
-                if line[17:20].strip() in ring_residues:
-                    if resnum not in RC_atoms_dict:
-                        name = line[17:20].strip() + "_" + str(resnum) + "_" + "RC" + "_" + line[
-                            21] + "_" + mutant + "_" + altern_conformation
-                        RC_atoms_dict[resnum] = ({}, name)
-                    if line[12:16].strip() in R_C_atoms:
-                        RC_atoms_dict[resnum][0][line[12:16].strip()] = [x, y, z]
-                coordsTMP += [[x, y, z]]
+            atom_names_tmp.append(f"{resname}_{resnum}_{atom_name}_{chain_id}_0_0")
 
-        for r_c in RC_atoms_dict.keys():
-            if "CD1" in RC_atoms_dict[r_c][0] and "CE2" in RC_atoms_dict[r_c][0]:
-                new_coords = [(RC_atoms_dict[r_c][0]["CD1"][0] + RC_atoms_dict[r_c][0]["CE2"][0]) / 2.0,
-                              (RC_atoms_dict[r_c][0]["CD1"][1] + RC_atoms_dict[r_c][0]["CE2"][1]) / 2.0,
-                              (RC_atoms_dict[r_c][0]["CD1"][2] + RC_atoms_dict[r_c][0]["CE2"][2]) / 2.0]
-                coordsTMP += [new_coords]
-                atomNamesTMP += [RC_atoms_dict[r_c][1]]
+            x = float(line[30:38])
+            y = float(line[38:46])
+            z = float(line[46:54])
+            coords_tmp.append([x, y, z])
 
-        return torch.tensor(coordsTMP).unsqueeze(0), [atomNamesTMP]
+            if resname in ring_residues:
+                if resnum not in rc_atoms_dict:
+                    rc_name = f"{resname}_{resnum}_RC_{chain_id}_0_0"
+                    rc_atoms_dict[resnum] = ({}, rc_name)
+                if atom_name in r_c_atoms:
+                    rc_atoms_dict[resnum][0][atom_name] = [x, y, z]
 
-    else:
-        coords = []
-        atomNames = []
+    for _, (rc_atoms, rc_name) in rc_atoms_dict.items():
+        if "CD1" in rc_atoms and "CE2" in rc_atoms:
+            cd1 = rc_atoms["CD1"]
+            ce2 = rc_atoms["CE2"]
+            new_coords = [(cd1[0] + ce2[0]) / 2.0, (cd1[1] + ce2[1]) / 2.0, (cd1[2] + ce2[2]) / 2.0]
+            coords_tmp.append(new_coords)
+            atom_names_tmp.append(rc_name)
 
-        for c, fil in enumerate(sorted(os.listdir(PDBFile))):
-            pdbNames += [fil.replace(".pdb", "")]
-            atomNamesTMP = []
-            coordsTMP = []
-            RC_atoms_dict = {}
-            cont = -1
-            oldres = -999
-            for line in open(PDBFile + "/" + fil).readlines():
-                if line[:6] == "ENDMDL":
-                    break
-                elif line[:4] == "ATOM":
-                    if keep_only_chains is not None and (not line[21] in keep_only_chains):
-                        continue
-                    if bb_only and not line[12:16].strip() in bbatoms:
-                        continue
-                    if oldres != int(line[22:26]):
-                        cont += 1
-                        oldres = int(line[22:26])
-                    if line[12:16].strip()[0] == "H":  # hydrogens are removed
-                        continue
-                    resnum = int(line[22:26])
-                    altern_conformation = "0"
-                    mutant = "0"
-
-                    atomNamesTMP += [line[17:20].strip() + "_" + str(resnum) + "_" + line[12:16].strip() + "_" + line[
-                        21] + "_" + mutant + "_" + altern_conformation]
-
-                    x = float(line[30:38])
-                    y = float(line[38:46])
-                    z = float(line[46:54])
-
-                    if line[17:20].strip() in ring_residues:
-                        if resnum not in RC_atoms_dict:
-                            name = line[17:20].strip() + "_" + str(resnum) + "_" + "RC" + "_" + line[
-                                21] + "_" + mutant + "_" + altern_conformation
-                            RC_atoms_dict[resnum] = ({}, name)
-                        if line[12:16].strip() in R_C_atoms:
-                            RC_atoms_dict[resnum][0][line[12:16].strip()] = [x, y, z]
-                    coordsTMP += [[x, y, z]]
-
-            for r_c in RC_atoms_dict.keys():
-                if "CD1" in RC_atoms_dict[r_c][0] and "CE2" in RC_atoms_dict[r_c][0]:
-                    new_coords = [(RC_atoms_dict[r_c][0]["CD1"][0] + RC_atoms_dict[r_c][0]["CE2"][0]) / 2.0,
-                                  (RC_atoms_dict[r_c][0]["CD1"][1] + RC_atoms_dict[r_c][0]["CE2"][1]) / 2.0,
-                                  (RC_atoms_dict[r_c][0]["CD1"][2] + RC_atoms_dict[r_c][0]["CE2"][2]) / 2.0]
-                    coordsTMP += [new_coords]
-                    atomNamesTMP += [RC_atoms_dict[r_c][1]]
-
-            coords += [torch.tensor(coordsTMP)]
-            atomNames += [atomNamesTMP]
-
-        return torch.nn.utils.rnn.pad_sequence(coords, batch_first=True,
-                                               padding_value=PADDING_INDEX), atomNames, pdbNames
+    return coords_tmp, atom_names_tmp
 
 
-def writepdb(coords, atnames, pdb_names=None, output_folder="outpdb/"):
+def parse_pdb(pdb_path, keep_only_chains=None, bb_only=False):
     """
-    function to write a pdb file from the coordinates and atom names
-
-    Parameters ---------- coords : torch.Tensor shape: (Batch, nAtoms, 3) coordinates of the proteins. It can be
-    generated using the vitra.utils.parsePDB function atnames : list shape: list of lists A list of the atom
-    identifier. It encodes atom type, residue type, residue position and chain as an example GLN_39_N_B_0_0 refers to
-    an atom N in a Glutamine, in position 39 of chain B. the last two zeros are used for the mutation engine and
-    should be ignored This list can be generated using the vitra.utils.parsePDB function pdb_names : list names of
-    the PDBs. you can get them from the output of utils.parsePDB. If None is given, the proteins are named with an
-    integer that represent their position in the batch output_folder : str output folder in which PDBs are written
-    Returns -------
+    Parses PDB files. It can parse a single file or all PDB files in a folder.
     """
+    if not os.path.isdir(pdb_path):
+        coords, atom_names = _parse_single_pdb(pdb_path, keep_only_chains, bb_only)
+        return torch.tensor(coords).unsqueeze(0), [atom_names], [os.path.basename(pdb_path).replace(".pdb", "")]
 
-    chain_hashingTot = []
-    chain_hashing = {}
-    for protN, prot in enumerate(atnames):
-        for atn, atom in enumerate(prot):
-            if not atom.split("_")[3] in chain_hashingTot:
-                chain_hashingTot += [atom.split("_")[3]]
+    all_coords = []
+    all_atom_names = []
+    pdb_names = []
 
-    chain_hashingTot = sorted(chain_hashingTot)
-    for i in range(len(chain_hashingTot)):
-        chain_hashing[i] = chain_hashingTot[i]
+    for filename in sorted(os.listdir(pdb_path)):
+        if not filename.endswith(".pdb"):
+            continue
+
+        pdb_names.append(filename.replace(".pdb", ""))
+        file_path = os.path.join(pdb_path, filename)
+        coords, atom_names = _parse_single_pdb(file_path, keep_only_chains, bb_only)
+        all_coords.append(torch.tensor(coords))
+        all_atom_names.append(atom_names)
+
+    return torch.nn.utils.rnn.pad_sequence(all_coords, batch_first=True,
+                                           padding_value=PADDING_INDEX), all_atom_names, pdb_names
+
+
+def _get_mutant_name(data: MutantNameData):
+    """Generates a name for the mutant PDB file."""
+    if ((data.altern_mask[:, data.alt] != data.wt_mask) & data.batch_mask).sum() > 0:
+        changing = (data.altern_mask[:, data.alt] != data.wt_mask) & data.batch_mask & data.ca_mask
+        pos_wt = data.res_num[changing & data.wt_mask].tolist()
+        chain_wt = data.chain_ind[changing & data.wt_mask].tolist()
+        resname_wt = data.resname[changing & data.wt_mask].tolist()
+        resname_mu = data.resname[changing & data.altern_mask[:, data.alt]].tolist()
+
+        name = data.pdb_name
+        for k, res_mu in enumerate(resname_mu):
+            n_mut = (f"{hashings.resi_hash_inverse[resname_wt[k]]}"
+                     f"{data.chain_hashing[chain_wt[k]]}{pos_wt[k]}"
+                     f"{hashings.resi_hash_inverse[res_mu]}")
+            name += "_" + n_mut
+        if len(name) > 50:
+            name = data.pdb_name + "_mutant" + str(data.alt)
+        return name
+    if data.alt == 0:
+        return data.pdb_name
+    return None
+
+
+def _format_pdb_line(i, atom_name, res_name, chain_id, res_num, x, y, z):
+    """Formats a single line of a PDB file."""
+    atom_name_map = {"tN": "N", "OXT": "O"}
+    atom_name = atom_name_map.get(atom_name, atom_name)
+
+    line = (f"ATOM  {i + 1: >5}  {atom_name: <4}{res_name}{chain_id: >2}{res_num: >4}    "
+            f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00 64.10           {atom_name[0]}\n")
+    return line
+
+
+def write_pdb(coords, atnames, pdb_names=None, output_folder="outpdb/"):
+    """
+    Writes a PDB file from coordinates and atom names.
+    """
+    os.makedirs(output_folder, exist_ok=True)
+
+    chain_ids = sorted(list(set(atom.split("_")[3] for prot in atnames for atom in prot)))
+    chain_hashing = dict(enumerate(chain_ids))
 
     if pdb_names is None:
-        pdb_names = []
-        for i in range(len(atnames)):
-            pdb_names += [str(i)]
+        pdb_names = [str(i) for i in range(len(atnames))]
 
-    info_tensors = dataStructures.create_info_tensors(atnames, device="cpu", verbose=False)
-
-    _, atom_description, coordsIndexingAtom, _, _, altern_mask = info_tensors
-
-    coords = coords[atom_description[:, 0].long(), coordsIndexingAtom]
-
-    os.system("mkdir -p " + output_folder + "/")
+    info_tensors = data_structures.create_info_tensors(atnames, device="cpu", verbose=False)
+    _, atom_description, coords_indexing_atom, _, _, altern_mask = info_tensors
+    coords = coords[atom_description[:, 0].long(), coords_indexing_atom]
 
     atname = atom_description[:, hashings.atom_description_hash["at_name"]]
-
     resname = atom_description[:, hashings.atom_description_hash["resname"]]
-
     batch_ind = atom_description[:, hashings.atom_description_hash["batch"]]
-
     chain_ind = atom_description[:, hashings.atom_description_hash["chain"]]
-
     res_num = atom_description[:, hashings.atom_description_hash["resnum"]]
+    wt_mask = altern_mask[:, 0]
 
-    wtMask = altern_mask[:, 0]
+    ca_mask = torch.zeros(coords.shape[0], dtype=torch.bool)
+    for res_hash in hashings.atom_hash.values():
+        if "CA" in res_hash:
+            ca_mask |= (atname == res_hash["CA"])
 
-    ca_mask = torch.zeros(coords.shape[0])
-    for res in hashings.resi_hash.keys():
-        ca_mask += (atname == hashings.atom_hash[res]["CA"])
-    ca_mask = ca_mask.bool()
-
-    for batch in range(len(pdb_names)):
-
+    for batch, pdb_name in enumerate(pdb_names):
         for alt in range(altern_mask.shape[-1]):
-
-            n = pdb_names[batch]
-
-            batchMask = batch_ind.eq(batch)
-            if ((altern_mask[:, alt] != wtMask) & batchMask).sum() > 0:
-                # mutation #
-
-                changing = (altern_mask[:, alt] != wtMask) & batchMask & ca_mask
-                posWT = res_num[changing & wtMask].tolist()
-
-                chainWT = chain_ind[changing & wtMask].tolist()
-
-                resnameWT = resname[changing & wtMask].tolist()
-                resnameMU = resname[changing & altern_mask[:, alt]].tolist()
-
-                name = n
-                for k in range(len(resnameMU)):
-                    nMut = hashings.resi_hash_inverse[resnameWT[k]] + chain_hashing[chainWT[k]] + str(posWT[k]) + \
-                           hashings.resi_hash_inverse[resnameMU[k]]
-                    name += "_" + nMut
-                if len(name) > 50:
-                    name = n + "_mutant" + str(alt)
-
-            elif alt == 0:
-                name = n
-            else:
+            mutant_data = MutantNameData(pdb_name, alt, wt_mask, batch_ind.eq(batch), ca_mask,
+                                         res_num, chain_ind, resname, altern_mask, chain_hashing)
+            name = _get_mutant_name(mutant_data)
+            if name is None:
                 continue
-            f = open(os.path.join(output_folder, name + ".pdb"), "w")
-            skip = ["RC", "RE"]
-            skip_mask = torch.zeros(coords.shape[0])
-            for res in hashings.resi_hash.keys():
-                for s in skip:
-                    if s in hashings.atom_hash[res]:
-                        skip_mask += (atname == hashings.atom_hash[res][s])
-            skip_mask = ~skip_mask.bool()
 
-            coords_mask = batchMask & altern_mask[:, alt] & skip_mask
+            with open(os.path.join(output_folder, name + ".pdb"), "w", encoding="utf-8") as f:
+                skip_atoms = {"RC", "RE"}
+                skip_mask = torch.ones(coords.shape[0], dtype=torch.bool)
+                for res_hash in hashings.atom_hash.values():
+                    for s in skip_atoms:
+                        if s in res_hash:
+                            skip_mask &= (atname != res_hash[s])
 
-            atnameLoc = atname[coords_mask].tolist()
+                coords_mask = batch_ind.eq(batch) & altern_mask[:, alt] & skip_mask
 
-            resnameLoc = resname[coords_mask].tolist()
+                atname_loc = atname[coords_mask].tolist()
+                resname_loc = resname[coords_mask].tolist()
+                chain_ind_loc = chain_ind[coords_mask].tolist()
+                res_num_loc = res_num[coords_mask].tolist()
+                coords_loc = coords[coords_mask].tolist()
 
-            chain_indLoc = chain_ind[coords_mask].tolist()
-
-            res_numLoc = res_num[coords_mask].tolist()
-
-            coordsLoc = coords[coords_mask].tolist()
-            for i in range(len(res_numLoc)):
-
-                num = " " * (5 - len(str(i + 1))) + str(i + 1)
-                at = hashings.atom_hash_inverse[atnameLoc[i]]
-                if at == "tN":
-                    at = "N"
-                if at == "OXT":
-                    at = "O"
-
-                a_name = at + " " * (4 - len(at))
-                numres = " " * (4 - len(str(res_numLoc[i]))) + str(res_numLoc[i])
-
-                x = round(float(coordsLoc[i][0]), 3)
-                sx = str(x)
-                while len(sx.split(".")[1]) < 3:
-                    sx += "0"
-                x = " " * (8 - len(sx)) + sx
-
-                y = round(float(coordsLoc[i][1]), 3)
-                sy = str(y)
-                while len(sy.split(".")[1]) < 3:
-                    sy += "0"
-                y = " " * (8 - len(sy)) + sy
-
-                z = round(float(coordsLoc[i][2]), 3)
-                sz = str(z)
-                while len(sz.split(".")[1]) < 3:
-                    sz += "0"
-                z = " " * (8 - len(sz)) + sz
-                chain = " " * (2 - len(chain_hashing[chain_indLoc[i]])) + chain_hashing[chain_indLoc[i]]
-                resNam = hashings.resi_hash_inverse[resnameLoc[i]]
-                f.write(
-                    "ATOM  " + num + "  " + a_name + "" + resNam + chain + numres +
-                    "    " + x + y + z + "  1.00 64.10           " + at[0] + "\n")
-            f.close()
+                for i, res_num_val in enumerate(res_num_loc):
+                    line = _format_pdb_line(i, hashings.atom_hash_inverse[atname_loc[i]],
+                                            hashings.resi_hash_inverse[resname_loc[i]],
+                                            chain_hashing[chain_ind_loc[i]], res_num_val,
+                                            coords_loc[i][0], coords_loc[i][1], coords_loc[i][2])
+                    f.write(line)
 
 
-def atomName2Seq(atName):
-    """
-    Function that returns the sequence of proteins given the atom names
-
-    Parameters
-    ----------
-
-    atName : list shape: list of lists A list of the atom identifier. It encodes atom type, residue type,
-    residue position and chain as an example GLN_39_N_B_0_0 refers to an atom N in a Glutamine, in position 39 of
-    chain B. the last two zeros are used for the mutation engine and should be ignored This list can be generated
-    using the vitra.utils.parsePDB function
-
-    Returns
-    -------
-    sequences :
-        sequence of the PDBs
-    """
-
+def _get_sequence_from_batch(batch):
+    """Extracts the sequence from a single batch of atoms."""
     letters = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ASN': 'N', 'PRO': 'P', 'THR': 'T',
                'PHE': 'F', 'ALA': 'A', 'HIS': 'H', 'GLY': 'G', 'ILE': 'I', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
-               'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}  # gli aminoacidi, che male qui non fanno
+               'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
 
-    seqs = []
+    ch = None
+    minres = 999
+    maxres = -1
+    rname = ""
+    rnum = {}
+    cont = 0
+    for atom in batch:
+        resname, resind, a, chains, _, _ = atom.split("_")
+        resind = int(resind)
+        if not (ch == chains or ch is None):
+            raise ValueError("This function only supports single chain PDBs for sequence extraction.")
+        if a == "CA":
+            maxres = max(maxres, resind)
+            minres = min(minres, resind)
+            rname += letters[resname]
+            rnum[resind] = cont
+            cont += 1
 
-    for batch in atName:
-        ch = None
-        minres = 999
-        maxres = -1
-        rname = ""
-        rnum = {}
-        cont = 0
-        for a in batch:
-            resname, resind, a, chains, mut, alt_conf = a.split("_")
-            resind = int(resind)
-            if not (ch == chains or ch is None):
-                    raise Exception("this is a testing function, only single chian pdbs are allowed")
-            if a == "CA":
-                if resind > maxres:
-                    maxres = resind
-                if resind < minres:
-                    minres = resind
-                rname += letters[resname]
-                rnum[int(resind)] = cont
-                cont += 1
-        s = ""
-        for k in range(0, maxres + 1):
+    s = ""
+    if maxres != -1:
+        for k in range(1, maxres + 1):
             if k in rnum:
                 s += rname[rnum[k]]
             else:
                 s += "X"
-        seqs += [s]
-    return seqs
+    return s
+
+
+def atom_name_to_seq(atom_names):
+    """
+    Function that returns the sequence of proteins given the atom names
+    """
+    return [_get_sequence_from_batch(batch) for batch in atom_names]

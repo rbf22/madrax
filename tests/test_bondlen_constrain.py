@@ -1,13 +1,13 @@
 import torch
 import math
-from vitra.energies.BondLenConstrain import BondLenConstrain
+from vitra.energies.bond_len_constrain import BondLengthConstraintEnergy
 
 def test_bondlen_constrain_score_distro():
     """
     Tests the scoreDistro method in the BondLenConstrain module.
     """
     dev = 'cpu'
-    bondlen_module = BondLenConstrain(dev=dev)
+    bondlen_module = BondLengthConstraintEnergy(dev=dev)
 
     # Mock mean and std tensors
     bondlen_module.mean = torch.tensor([[1.3, 2.1, 2.0]], device=dev)
@@ -17,7 +17,7 @@ def test_bondlen_constrain_score_distro():
     inputs = torch.tensor([[1.3, 2.1, 2.0]], device=dev)
     seq = torch.tensor([0], device=dev, dtype=torch.long)
 
-    score = bondlen_module.scoreDistro(inputs, seq)
+    score = bondlen_module._score_distribution(inputs, seq)
     # The score is -log(P), where P is the probability density. At the mean, P is maximal.
     # The formula is constructed such that the score at the mean is 0.
     assert torch.allclose(score, torch.tensor([[0.0, 0.0, 0.0]], device=dev), atol=1e-6)
@@ -35,5 +35,5 @@ def test_bondlen_constrain_score_distro():
 
     # Case 2: Input is far from the mean, score should be large
     inputs = torch.tensor([[2.0, 3.0, 3.0]], device=dev)
-    score_large = bondlen_module.scoreDistro(inputs, seq)
+    score_large = bondlen_module._score_distribution(inputs, seq)
     assert (score_large > score).all()

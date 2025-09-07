@@ -1,5 +1,4 @@
-import torch
-from vitra.energies.AngleScorer import AngleScorer
+from vitra.energies.angle_scorer import AngleScorerEnergy
 
 def test_angle_scorer_instantiation():
     """
@@ -7,8 +6,8 @@ def test_angle_scorer_instantiation():
     This also tests that the pre-trained KDE models can be loaded correctly.
     """
     dev = 'cpu'
-    angle_scorer_module = AngleScorer(dev=dev)
+    angle_scorer_module = AngleScorerEnergy(dev=dev)
     assert angle_scorer_module is not None
-    assert len(angle_scorer_module.kdeBB) > 0
-    assert len(angle_scorer_module.kdeOmega) > 0
-    assert len(angle_scorer_module.kdeSC) > 0
+    assert len(angle_scorer_module.kde_bb) > 0
+    assert len(angle_scorer_module.kde_omega) > 0
+    assert len(angle_scorer_module.kde_sc) > 0

@@ -25,10 +25,10 @@
 import torch
 
 from vitra.sources import hashings
-from vitra.sources.globalVariables import *
+from vitra.sources.globalVariables import PADDING_INDEX
 
 class Vdw(torch.nn.Module):
-    """
+    r"""
     This module calculates an energy term that appears to be related to Van der Waals interactions,
     but it does not implement the pairwise Lennard-Jones potential described in the README.md.
 
@@ -146,7 +146,7 @@ class Vdw(torch.nn.Module):
 
         atomEnergy = self.bindToAtoms(atom_description, alternativeMask, facc)
         residueEnergyMC, residueEnergySC = self.bindToResi(atomEnergy, atom_description, is_backbone_mask)
-        return residueEnergyMC, residueEnergySC
+        return residueEnergyMC.unsqueeze(-1), residueEnergySC.unsqueeze(-1)
 
     def getWeights(self):
         pass
