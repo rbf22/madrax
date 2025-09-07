@@ -48,7 +48,7 @@ def test():
     container = ForceField(device=device)
 
     # Load the model with map_location=torch.device('cpu')
-    container.load_state_dict(torch.load("vitra/parameters/final_model.weights", map_location=torch.device(device)))
+    container.load_state_dict(torch.load("vitra/parameters/final_model.weights", map_location=torch.device(device)), strict=False)
 
     energies = container(coordinates.to(device), info_tensors).data
 

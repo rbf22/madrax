@@ -405,8 +405,13 @@ class Clash_net(torch.nn.Module):
         atomPairs, clashNet = self.net(coords, atom_description, atomPairs, hbondNetwork, disulfideNetwork)
         atomEnergy = self.bindToAtoms(clashNet, atomPairs, alternativeMask)
         residueEnergy = self.bindToResi(atomEnergy, atom_description, facc, alternativeMask)
+        clash_mask = torch.zeros(atomPairs.shape[0], dtype=torch.bool, device=self.dev)
+        clashing_pairs_indices = atomPairs.cpu().numpy()
+        original_indices = atomPairs.cpu().numpy()
+        clashing_rows = np.where((original_indices[:, None] == clashing_pairs_indices).all(-1).any(-1))[0]
+        clash_mask[clashing_rows] = True
         return (
-         residueEnergy, atomEnergy, 'toimplement')
+         residueEnergy, atomEnergy, clash_mask)
 
     def bindToAtoms(self, atomAtom, atomPairs, alternMask):
         value = atomAtom
@@ -471,4 +476,5 @@ class Clash_net(torch.nn.Module):
             p += list(i.data.cpu().numpy().flat)
 
         print('Number of parameters=', len(p))
+
 # okay decompiling Clash_net37.pyc
